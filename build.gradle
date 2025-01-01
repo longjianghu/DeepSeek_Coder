@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '1.16.1'
+}
+
+group 'com.sohocn'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.google.code.gson:gson:2.8.9'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'com.vladsch.flexmark:flexmark-all:0.64.0'
+}
+
+intellij {
+    version = '2023.1.1'
+    type = 'IC'
+    plugins = ['com.intellij.java']
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks {
+    patchPluginXml {
+        sinceBuild = '231'
+        untilBuild = '241.*'
+    }
+
+    signPlugin {
+        certificateChain = System.getenv('CERTIFICATE_CHAIN')
+        privateKey = System.getenv('PRIVATE_KEY')
+        password = System.getenv('PRIVATE_KEY_PASSWORD')
+    }
+
+    publishPlugin {
+        token = System.getenv('PUBLISH_TOKEN')
+    }
+} 
