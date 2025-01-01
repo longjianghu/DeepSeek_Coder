@@ -48,26 +48,17 @@ public class DeepSeekToolWindow {
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
     private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
     private static final String HISTORY_LIMIT = "com.sohocn.deepseek.historyLimit";
+    private static final int MESSAGE_TOTAL_MARGIN = 30; // 消息气泡的总边距
     private static final Gson gson = new GsonBuilder().create();
     private final JPanel content;
     private final JBPanel<JBPanel<?>> chatPanel;
     private final JBTextArea inputArea = new JBTextArea();
     private final Project project;
-    private JLabel charCountLabel;
     private final DeepSeekService deepSeekService;
-    private final Parser markdownParser;
-    private final HtmlRenderer htmlRenderer;
-    private static final int MESSAGE_HORIZONTAL_MARGIN = 30; // 每侧 30 像素的边距
-    private static final int MESSAGE_TOTAL_MARGIN = MESSAGE_HORIZONTAL_MARGIN * 2; // 两侧总共 60 像素的边距
 
     public DeepSeekToolWindow(Project project) {
         this.project = project;
         this.deepSeekService = new DeepSeekService();
-
-        // 初始化 Markdown 解析器
-        MutableDataSet options = new MutableDataSet();
-        markdownParser = Parser.builder(options).build();
-        htmlRenderer = HtmlRenderer.builder(options).build();
 
         content = new JPanel(new BorderLayout());
         
@@ -76,7 +67,7 @@ public class DeepSeekToolWindow {
         content.setBackground(backgroundColor);
 
         // 聊天区域
-        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 10, true, false));
+        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 1, true, false));
         chatPanel.setBackground(backgroundColor);
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
         chatScrollPane.setBackground(backgroundColor);
@@ -134,25 +125,19 @@ public class DeepSeekToolWindow {
 
         // 监听输入变化
         inputArea.getDocument().addDocumentListener(new DocumentListener() {
-            private void updateCharCount() {
-                int count = inputArea.getText().length();
-                charCountLabel.setText(count + " 字");
-                charCountLabel.setVisible(true);
-            }
-
             @Override
             public void insertUpdate(DocumentEvent e) {
-                updateCharCount();
+                // 不需要任何操作
             }
 
             @Override
             public void removeUpdate(DocumentEvent e) {
-                updateCharCount();
+                // 不需要任何操作
             }
 
             @Override
             public void changedUpdate(DocumentEvent e) {
-                updateCharCount();
+                // 不需要任何操作
             }
         });
 
@@ -223,7 +208,6 @@ public class DeepSeekToolWindow {
             // 禁用输入框
             inputArea.setEnabled(false);
             inputArea.setText("");
-            charCountLabel.setText("0 字,按Enter提交，Shift+Enter换行"); // 重置字数统计
 
             // 确保在 EDT 线程中添加消息
             SwingUtilities.invokeLater(() -> {
@@ -248,26 +232,15 @@ public class DeepSeekToolWindow {
 
                         deepSeekService.streamMessage(
                             message,
-                            // 处理每个文本块
                             chunk -> SwingUtilities.invokeLater(() -> {
                                 fullResponse.append(chunk);
                                 String currentResponse = fullResponse.toString();
-
-                                // 保存原始消息
                                 aiBubble.putClientProperty("originalMessage", currentResponse);
 
-                                // 更新原始消息内容
-                                @SuppressWarnings("unchecked")
-                                Consumer<String> updateMessage = (Consumer<String>) aiBubble.getClientProperty("updateMessage");
-                                if (updateMessage != null) {
-                                    updateMessage.accept(currentResponse);
-                                }
-
-                                // 渲染 Markdown
-                                Node document = markdownParser.parse(currentResponse);
-                                String html = htmlRenderer.render(document);
+                                // 更新消息内容
                                 JEditorPane textArea = (JEditorPane) aiBubble.getClientProperty("textArea");
-                                textArea.setText(wrapHtmlContent(html));
+                                textArea.setContentType("text/html");
+                                textArea.setText(wrapContent(currentResponse, false));
 
                                 // 调整大小
                                 int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
@@ -275,7 +248,7 @@ public class DeepSeekToolWindow {
                                     textArea.setSize(maxWidth, Short.MAX_VALUE);
                                     int preferredHeight = textArea.getPreferredSize().height;
                                     ((JPanel)aiBubble.getComponent(0)).setPreferredSize(
-                                        new Dimension(maxWidth, preferredHeight + 32)
+                                        new Dimension(maxWidth, preferredHeight + 16)
                                     );
                                 }
 
@@ -283,28 +256,10 @@ public class DeepSeekToolWindow {
                                 aiBubble.revalidate();
                                 chatPanel.revalidate();
                             }),
-                            // 处理 token 使用情况
-                            tokenUsage -> SwingUtilities.invokeLater(() -> {
-                                JLabel tokenLabel = (JLabel) aiBubble.getClientProperty("tokenLabel");
-                                JPanel bottomPanel = (JPanel) aiBubble.getClientProperty("bottomPanel");
-                                if (tokenLabel != null && bottomPanel != null) {
-                                    tokenLabel.setText(String.format(
-                                        "Tokens: %d prompt, %d completion, %d total",
-                                        tokenUsage.promptTokens,
-                                        tokenUsage.completionTokens,
-                                        tokenUsage.totalTokens
-                                    ));
-                                    bottomPanel.setVisible(true);
-                                    
-                                    // 在显示 token 信息后滚动到底部
-                                    scrollToBottom();
-                                }
-                            }),
-                            // 完成回调
+                            tokenUsage -> {}, // 忽略 token 信息
                             () -> SwingUtilities.invokeLater(() -> {
                                 inputArea.setEnabled(true);
                                 inputArea.requestFocus();
-                                // 完成时也滚动到底部
                                 scrollToBottom();
                             })
                         );
@@ -342,81 +297,14 @@ public class DeepSeekToolWindow {
     private JBPanel<JBPanel<?>> createMessageBubble(String message, boolean isUser) {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
         bubble.setBackground(null);
+        bubble.setBorder(JBUI.Borders.empty(1, 10));
 
         // 创建文本区域
         JEditorPane textArea = new JEditorPane();
-        textArea.setEditorKit(createMarkdownEditorKit());
         textArea.setEditable(false);
         textArea.setBorder(JBUI.Borders.empty(8));
         textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         textArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
-
-        // 允许水平滚动
-        textArea.addHyperlinkListener(e -> {
-            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                try {
-                    Desktop.getDesktop().browse(e.getURL().toURI());
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-        });
-
-        // 创建底部面板，包含 token 信息和复制图标
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        bottomPanel.setOpaque(false);
-        bottomPanel.setBorder(JBUI.Borders.empty(8, 0, 8, 0));
-
-        // Token 信息标签
-        JLabel tokenLabel = new JLabel("");
-        tokenLabel.setForeground(new Color(153, 153, 153));
-        tokenLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-
-        // 复制图标按钮
-        JLabel copyIcon = new JLabel("📋");
-        copyIcon.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-        copyIcon.setForeground(new Color(153, 153, 153));
-        copyIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        copyIcon.setToolTipText("复制内容");
-
-        // 保存原始消息的引用
-        final String[] currentMessage = {message};
-
-        copyIcon.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (!isUser) {
-                    String contentToCopy = currentMessage[0];
-                    if (contentToCopy != null && !contentToCopy.isEmpty()) {
-                        StringSelection selection = new StringSelection(contentToCopy);
-                        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-                        clipboard.setContents(selection, selection);
-
-                        // 可选：显示复制成功提示
-                        copyIcon.setToolTipText("复制成功！");
-                        Timer timer = new Timer(1500, evt -> copyIcon.setToolTipText("复制内容"));
-                        timer.setRepeats(false);
-                        timer.start();
-                    }
-                }
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                copyIcon.setForeground(Color.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                copyIcon.setForeground(new Color(153, 153, 153));
-            }
-        });
-
-        if (!isUser) {
-            bottomPanel.add(tokenLabel);
-            bottomPanel.add(copyIcon);
-            bottomPanel.setVisible(false); // 初始时隐藏，等有 token 信息时再显示
-        }
 
         // 创建一个带圆角边框的面板
         JPanel roundedPanel = new JPanel(new BorderLayout()) {
@@ -424,137 +312,68 @@ public class DeepSeekToolWindow {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                // 绘制圆角背景（只为 AI 回复添加背景色）
-                if (!isUser) {
-                    g2.setColor(new Color(58, 58, 58));
-                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                }
-
-                // 绘制边框
-                g2.setColor(new Color(80, 80, 80));
-                g2.setStroke(new BasicStroke(1f));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
-
                 g2.dispose();
             }
         };
         roundedPanel.setOpaque(false);
 
-        // 创建一个面板来包含文本区域和底部面板
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.setOpaque(false);
-        contentPanel.add(textArea, BorderLayout.CENTER);
-        if (!isUser) {
-            contentPanel.add(bottomPanel, BorderLayout.SOUTH);
-        }
-        roundedPanel.add(contentPanel);
+        // 统一设置文本内容的渲染逻辑
+        textArea.setBackground(null);
+        textArea.setForeground(new Color(220, 220, 220));
+        
+        // 所有消息都使用 HTML 渲染，以支持样式
+        textArea.setContentType("text/html");
+        textArea.setText(wrapContent(message, isUser));
 
-        // 设置颜色和内容
-        if (isUser) {
-            textArea.setBackground(null);
-            textArea.setForeground(Color.WHITE);
-            textArea.setText(message);
-            bubble.add(roundedPanel, BorderLayout.EAST);
+        roundedPanel.add(textArea);
+        bubble.add(roundedPanel, BorderLayout.WEST);
 
-            int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN, 600); // 限制最大宽度
-            if (maxWidth > 0) {
-                textArea.setSize(maxWidth, Short.MAX_VALUE);
-                int preferredHeight = textArea.getPreferredSize().height;
-                roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 16));
-            }
-        } else {
-            textArea.setBackground(new Color(58, 58, 58));
-            textArea.setForeground(Color.WHITE);
-            
-            // 检查消息是否包含代码块
-            if (message.contains("```") || message.contains("`")) {
-                // 包含代码块，使用 Markdown 渲染
-                Node document = markdownParser.parse(message);
-                String html = htmlRenderer.render(document);
-                textArea.setContentType("text/html");
-                textArea.setText(wrapHtmlContent(html));
-            } else {
-                // 不包含代码块，使用简单的 HTML 包装纯文本
-                textArea.setContentType("text/html");
-                String wrappedText = String.format(
-                    "<html><body style='margin: 0; padding: 0; white-space: pre-wrap;'>%s</body></html>",
-                    message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-                );
-                textArea.setText(wrappedText);
-            }
-            
-            bubble.add(roundedPanel, BorderLayout.WEST);
-
-            int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
-            if (maxWidth > 0) {
-                textArea.setSize(maxWidth, Short.MAX_VALUE);
-                int preferredHeight = textArea.getPreferredSize().height;
-                roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 32));
-            }
-        }
-
-        // 将内容面板放入面板（不使用滚动面板）
-        bubble.add(roundedPanel);
-        bubble.setBorder(JBUI.Borders.empty(5, 15));
-
-        // 保存 token 标签的引用
-        bubble.putClientProperty("tokenLabel", tokenLabel);
-
-        // 在 sendMessage 方法的回调中更新消息内容
-        if (!isUser) {
-            bubble.putClientProperty("updateMessage", (Consumer<String>)newMessage -> {
-                currentMessage[0] = newMessage;
-            });
-            bubble.putClientProperty("bottomPanel", bottomPanel); // 保存底部面板的引用
+        // 统一设置大小
+        int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
+        if (maxWidth > 0) {
+            textArea.setSize(maxWidth, Short.MAX_VALUE);
+            int preferredHeight = textArea.getPreferredSize().height;
+            roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 16));
         }
 
         // 保存文本区域的引用
         bubble.putClientProperty("textArea", textArea);
+        bubble.putClientProperty("originalMessage", message);
 
         return bubble;
     }
 
-    private HTMLEditorKit createMarkdownEditorKit() {
-        HTMLEditorKit kit = new HTMLEditorKit();
-        StyleSheet styleSheet = kit.getStyleSheet();
+    private String wrapHtmlContent(String message) {
+        // 简单的代码块检测和处理
+        StringBuilder html = new StringBuilder();
+        String[] parts = message.split("(```[^`]*```)|(`[^`]*`)");
+        String[] codes = message.split("[^`]+");
+        
+        int codeIndex = 0;
+        for (int i = 0; i < parts.length; i++) {
+            // 处理普通文本
+            String text = parts[i].replace("<", "&lt;")
+                                .replace(">", "&gt;")
+                                .replace("\n", "<br>")
+                                .replace(" ", "&nbsp;");
+            html.append("<p>").append(text).append("</p>");
+            
+            // 处理代码块
+            if (codeIndex < codes.length && codes[codeIndex].startsWith("```")) {
+                String code = codes[codeIndex].substring(3, codes[codeIndex].length() - 3);
+                html.append("<pre><code>").append(code).append("</code></pre>");
+                codeIndex++;
+            }
+        }
 
-        styleSheet
-            .addRule(
-                "body { color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Arial, sans-serif; }");
-        styleSheet.addRule("pre { background-color: #2B2B2B; margin: 10px 0; border-radius: 5px; }");
-        styleSheet.addRule("pre code { font-family: 'JetBrains Mono', monospace; }");
-        styleSheet
-            .addRule(
-                "code { background-color: #2B2B2B; padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; }");
-        styleSheet.addRule("p { margin: 8px 0; }");
-        styleSheet.addRule("a { color: #589DF6; }");
-        styleSheet.addRule("img { max-width: 100%; }");
-        styleSheet.addRule("table { width: 100%; border-collapse: collapse; margin: 10px 0; }");
-        styleSheet.addRule("td, th { border: 1px solid #4A4A4A; padding: 8px; }");
-
-        return kit;
-    }
-
-    private String wrapHtmlContent(String html) {
-        int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
         return String.format(
             "<html><head><style>" +
-            "body { background-color: transparent; margin: 0; padding: 0; width: %dpx; }" +
-            // 普通文本样式
-            "body > *:not(pre) { white-space: pre-wrap; margin: 8px 0; }" +
-            // 代码块样式
-            "pre { margin: 10px 0; background-color: #2B2B2B; padding: 10px; border-radius: 5px; " +
-            "     overflow-x: auto; max-width: %dpx; }" +
-            "pre code { white-space: pre; font-family: 'JetBrains Mono', monospace; }" +
-            // 其他基本样式
-            "img { max-width: 100%%; }" +
-            "table { width: 100%%; border-collapse: collapse; }" +
-            "td, th { border: 1px solid #4A4A4A; padding: 8px; }" +
+            "body { margin: 0; padding: 0; color: #DCDCDC; }" +
+            "p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }" +
+            "pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; margin: 10px 0; overflow-x: auto; }" +
+            "code { font-family: 'JetBrains Mono', monospace; }" +
             "</style></head><body>%s</body></html>",
-            maxWidth,
-            maxWidth,
-            html
+            html.toString()
         );
     }
 
@@ -579,13 +398,9 @@ public class DeepSeekToolWindow {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             inputArea.setEnabled(false);
             inputArea.putClientProperty("StatusText", "请先配置 API KEY");
-            charCountLabel.setVisible(false);
         } else {
             inputArea.setEnabled(true);
             inputArea.putClientProperty("StatusText", null);
-            charCountLabel.setVisible(true);
-            charCountLabel.setText(String.format("%d 字,按Enter提交，Shift+Enter换行", 
-                inputArea.getText().replaceAll("^\\s+|\\s+$", "").length()));
         }
     }
 
@@ -604,10 +419,9 @@ public class DeepSeekToolWindow {
                             int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
                             
                             // 只有包含代码块的消息才需要重新渲染
-                            if (originalMessage.contains("```") || originalMessage.contains("`")) {
-                                Node document = markdownParser.parse(originalMessage);
-                                String html = htmlRenderer.render(document);
-                                textArea.setText(wrapHtmlContent(html));
+                            if (originalMessage.contains("```")) {
+                                textArea.setContentType("text/html");
+                                textArea.setText(wrapContent(originalMessage, false));
                             }
                             
                             // 调整大小
@@ -636,35 +450,13 @@ public class DeepSeekToolWindow {
                 if (component instanceof JBPanel) {
                     JBPanel<?> bubble = (JBPanel<?>) component;
                     String message = (String) bubble.getClientProperty("originalMessage");
-                    boolean isUser = bubble.getComponent(0) instanceof JPanel && 
-                                   !((JPanel)bubble.getComponent(0)).isOpaque();
-
-                    // 获取 token 信息
-                    TokenInfo tokenInfo = null;
-                    if (!isUser) {
-                        JLabel tokenLabel = (JLabel) bubble.getClientProperty("tokenLabel");
-                        if (tokenLabel != null && tokenLabel.getText() != null) {
-                            String tokenText = tokenLabel.getText();
-                            try {
-                                String[] parts = tokenText.split("[^0-9]+");
-                                if (parts.length >= 4) {
-                                    tokenInfo = new TokenInfo(
-                                        Integer.parseInt(parts[1]),
-                                        Integer.parseInt(parts[2]),
-                                        Integer.parseInt(parts[3])
-                                    );
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
+                    // 从 bubble 中获取 textArea 并检查其内容来判断是否为用户消息
+                    JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
+                    boolean isUser = textArea != null && 
+                                   textArea.getText().contains("user-message");
 
                     if (message != null && !message.isEmpty()) {
-                        messages.add(new ChatMessage(message, isUser, tokenInfo));
-                        System.out.println("Saving message: " + message + ", tokenInfo: " + 
-                            (tokenInfo != null ? String.format("prompt=%d, completion=%d, total=%d",
-                                tokenInfo.promptTokens, tokenInfo.completionTokens, tokenInfo.totalTokens) : "null"));
+                        messages.add(new ChatMessage(message, isUser));
                     }
                 }
             }
@@ -678,7 +470,6 @@ public class DeepSeekToolWindow {
             if (!messages.isEmpty()) {
                 String json = gson.toJson(messages);
                 PropertiesComponent.getInstance().setValue(CHAT_HISTORY, json);
-                System.out.println("Saved chat history: " + messages.size() + " messages"); // 添加日志
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -689,7 +480,6 @@ public class DeepSeekToolWindow {
     private void loadChatHistory() {
         try {
             String json = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
-            System.out.println("Loading chat history: " + json);
 
             if (json != null && !json.isEmpty()) {
                 Type listType = new TypeToken<ArrayList<ChatMessage>>(){}.getType();
@@ -699,33 +489,9 @@ public class DeepSeekToolWindow {
                     chatPanel.removeAll();
 
                     for (ChatMessage message : messages) {
+                        // 创建消息气泡，传入正确的 isUser 参数
                         JBPanel<JBPanel<?>> bubble = createMessageBubble(message.getMessage(), message.isUser());
                         bubble.putClientProperty("originalMessage", message.getMessage());
-
-                        if (!message.isUser()) {
-                            // 渲染 Markdown
-                            JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
-                            if (textArea != null) {
-                                Node document = markdownParser.parse(message.getMessage());
-                                String html = htmlRenderer.render(document);
-                                textArea.setText(wrapHtmlContent(html));
-                            }
-
-                            // 恢复 token 信息
-                            TokenInfo tokenInfo = message.getTokenInfo();
-                            if (tokenInfo != null) {
-                                JLabel tokenLabel = (JLabel) bubble.getClientProperty("tokenLabel");
-                                JPanel bottomPanel = (JPanel) bubble.getClientProperty("bottomPanel");
-                                if (tokenLabel != null && bottomPanel != null) {
-                                    String tokenText = String.format("Tokens: %d prompt, %d completion, %d total",
-                                        tokenInfo.promptTokens, tokenInfo.completionTokens, tokenInfo.totalTokens);
-                                    tokenLabel.setText(tokenText);
-                                    bottomPanel.setVisible(true);
-                                    System.out.println("Restored token info for message: " + tokenText);
-                                }
-                            }
-                        }
-
                         chatPanel.add(bubble);
                     }
 
@@ -743,12 +509,10 @@ public class DeepSeekToolWindow {
     private static class ChatMessage {
         private final String message;
         private final boolean user;
-        private final TokenInfo tokenInfo; // 添加 token 信息
 
-        public ChatMessage(String message, boolean user, TokenInfo tokenInfo) {
+        public ChatMessage(String message, boolean user) {
             this.message = message;
             this.user = user;
-            this.tokenInfo = tokenInfo;
         }
 
         public String getMessage() {
@@ -757,29 +521,6 @@ public class DeepSeekToolWindow {
 
         public boolean isUser() {
             return user;
-        }
-
-        public TokenInfo getTokenInfo() {
-            return tokenInfo;
-        }
-    }
-
-    // 添加 TokenInfo 类
-    private static class TokenInfo {
-        private final int promptTokens;
-        private final int completionTokens;
-        private final int totalTokens;
-
-        public TokenInfo(int promptTokens, int completionTokens, int totalTokens) {
-            this.promptTokens = promptTokens;
-            this.completionTokens = completionTokens;
-            this.totalTokens = totalTokens;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("TokenInfo{prompt=%d, completion=%d, total=%d}",
-                promptTokens, completionTokens, totalTokens);
         }
     }
 
@@ -874,13 +615,12 @@ public class DeepSeekToolWindow {
                 g2.dispose();
             }
 
-            // 添加这个方法来确保面板是完全不透明的
             @Override
             public boolean isOpaque() {
                 return false;
             }
         };
-        borderPanel.setBorder(JBUI.Borders.empty(1)); // 添加小边距以防止边框被裁剪
+        borderPanel.setBorder(JBUI.Borders.empty(1));
 
         // 输入框
         inputArea.setBackground(new Color(43, 43, 43));
@@ -891,48 +631,23 @@ public class DeepSeekToolWindow {
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
-        inputArea.setOpaque(false); // 设置为透明，让背景色显示出来
+        inputArea.setOpaque(false);
 
-        // 字数统计标签
-        charCountLabel = new JLabel("0 字,按Enter提交，Shift+Enter换行");
-        charCountLabel.setForeground(new Color(153, 153, 153));
-        charCountLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        charCountLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
+        // 快捷键提示标签
+        JLabel hintLabel = new JLabel("按Enter提交，Shift+Enter换行");
+        hintLabel.setForeground(new Color(153, 153, 153));
+        hintLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        hintLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
-        bottomPanel.add(charCountLabel, BorderLayout.EAST);
+        bottomPanel.add(hintLabel, BorderLayout.EAST);
 
         // 组装面板
         borderPanel.add(inputArea, BorderLayout.CENTER);
         borderPanel.add(bottomPanel, BorderLayout.SOUTH);
         inputPanel.add(borderPanel, BorderLayout.CENTER);
-
-        // 监听输入变化
-        inputArea.getDocument().addDocumentListener(new DocumentListener() {
-            private void updateCharCount() {
-                // 获取输入内容并过滤前后空格后计算字数
-                int count = inputArea.getText().replaceAll("^\\s+|\\s+$", "").length();
-                charCountLabel.setText(String.format("%d 字,按Enter提交，Shift+Enter换行", count));
-                charCountLabel.setVisible(true);
-            }
-
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                updateCharCount();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                updateCharCount();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                updateCharCount();
-            }
-        });
 
         // 添加回车发送功能
         inputArea.addKeyListener(new KeyAdapter() {
@@ -1017,5 +732,50 @@ public class DeepSeekToolWindow {
 
             timer.start();
         });
+    }
+
+    private String wrapContent(String message, boolean isUser) {
+        // 只处理代码块
+        StringBuilder html = new StringBuilder();
+        String[] parts = message.split("```");
+        
+        for (int i = 0; i < parts.length; i++) {
+            if (i % 2 == 0) {
+                // 普通文本
+                String text = parts[i].replace("<", "&lt;")
+                                    .replace(">", "&gt;")
+                                    .replace("\n", "<br>")
+                                    .replace(" ", "&nbsp;");
+                if (isUser) {
+                    // 只为用户消息添加边框样式
+                    html.append("<div class='user-message'>").append(text).append("</div>");
+                } else {
+                    // AI 回复使用普通文本样式
+                    html.append(text);
+                }
+            } else {
+                // 代码块
+                html.append("<pre><code>").append(parts[i]).append("</code></pre>");
+            }
+        }
+
+        return String.format(
+            "<html><head><style>" +
+            "body { margin: 0; padding: 0; color: #DCDCDC; }" +
+            // 用户消息的样式
+            ".user-message { " +
+            "   background-color: #2B2B2B; " +
+            "   border: 1px solid #646464; " +
+            "   border-radius: 5px; " +
+            "   padding: 8px; " +
+            "   margin: 0; " +
+            "   white-space: pre-wrap; " +
+            "   word-wrap: break-word; " +
+            "}" +
+            "pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; margin: 10px 0; overflow-x: auto; }" +
+            "code { font-family: 'JetBrains Mono', monospace; }" +
+            "</style></head><body>%s</body></html>",
+            html.toString()
+        );
     }
 } 
