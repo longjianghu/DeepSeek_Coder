@@ -60,16 +60,53 @@ public class DeepSeekToolWindow {
         chatScrollPane.setBackground(backgroundColor);
         chatScrollPane.setBorder(JBUI.Borders.empty());
         
+        // 创建字数统计标签（移到这里）
+        charCountLabel = new JLabel("0 字");
+        charCountLabel.setForeground(Color.GRAY);
+        charCountLabel.setBorder(JBUI.Borders.empty(2, 5));
+        
         // 输入区域
         inputArea = new JBTextArea();
         inputArea.setRows(5);
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
+        
+        // 自定义输入框样式
+        inputArea.setBorder(JBUI.Borders.empty(8));
+        inputArea.setBackground(new Color(58, 58, 58));
+        inputArea.setForeground(Color.WHITE);
+        inputArea.setCaretColor(Color.WHITE);
+        inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
 
-        // 创建字数统计标签
-        charCountLabel = new JLabel("0 字");
-        charCountLabel.setForeground(Color.GRAY);
-        charCountLabel.setBorder(JBUI.Borders.empty(2, 5));
+        // 创建一个带圆角和边框的面板来包装输入框
+        JPanel inputWrapper = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // 绘制圆角背景
+                g2.setColor(new Color(58, 58, 58));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                
+                // 绘制边框
+                g2.setColor(new Color(80, 80, 80));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+                
+                g2.dispose();
+            }
+        };
+        inputWrapper.setOpaque(false);
+        inputWrapper.add(inputArea);
+        inputWrapper.setBorder(JBUI.Borders.empty(2));
+
+        // 创建输入区域面板，包含输入框和字数统计
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        inputPanel.setBackground(backgroundColor);
+        inputPanel.setBorder(JBUI.Borders.empty(10));
+        inputPanel.add(inputWrapper, BorderLayout.CENTER);
+        inputPanel.add(charCountLabel, BorderLayout.SOUTH);
 
         // 监听输入变化
         inputArea.getDocument().addDocumentListener(new DocumentListener() {
@@ -93,14 +130,6 @@ public class DeepSeekToolWindow {
                 updateCharCount();
             }
         });
-
-        // 创建输入区域面板，包含输入框和字数统计
-        JPanel inputPanel = new JPanel(new BorderLayout());
-        inputPanel.setBackground(backgroundColor);
-        JBScrollPane inputScrollPane = new JBScrollPane(inputArea);
-        inputScrollPane.setBorder(JBUI.Borders.empty(5));
-        inputPanel.add(inputScrollPane, BorderLayout.CENTER);
-        inputPanel.add(charCountLabel, BorderLayout.SOUTH);
 
         // 添加回车发送功能
         inputArea.addKeyListener(new KeyAdapter() {
@@ -143,30 +172,58 @@ public class DeepSeekToolWindow {
 
             // 禁用输入框，显示正在处理
             inputArea.setEnabled(false);
-            addMessageBubble("正在思考中...", false);
+            
+            // 创建 AI 回复的气泡
+            JBPanel<JBPanel<?>> aiBubble = createMessageBubble("", false);
+            JScrollPane scrollPane = (JScrollPane) aiBubble.getComponent(0);
+            JTextArea textArea = (JTextArea) scrollPane.getViewport().getView();
+            chatPanel.add(aiBubble);
+            chatPanel.revalidate();
+            chatPanel.repaint();
 
             // 在后台线程中发送请求
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 try {
-                    String response = deepSeekService.sendMessage(message);
-
-                    // 在 UI 线程中更新界面
-                    SwingUtilities.invokeLater(() -> {
-                        // 移除"正在思考中..."
-                        chatPanel.remove(chatPanel.getComponentCount() - 1);
-                        // 显示 AI 回复
-                        addMessageBubble(response, false);
-                        // 重新启用输入框
-                        inputArea.setEnabled(true);
-                        inputArea.requestFocus();
-                    });
+                    StringBuilder fullResponse = new StringBuilder();
+                    
+                    deepSeekService.streamMessage(
+                        message,
+                        // 处理每个文本块
+                        chunk -> SwingUtilities.invokeLater(() -> {
+                            fullResponse.append(chunk);
+                            
+                            // 更新文本内容
+                            textArea.setText(fullResponse.toString());
+                            
+                            // 调整大小
+                            int maxWidth = (int)(chatPanel.getWidth() * 0.8);
+                            if (maxWidth > 0) {
+                                textArea.setSize(maxWidth, Short.MAX_VALUE);
+                                int preferredHeight = textArea.getPreferredSize().height;
+                                scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 16, 400)));
+                            }
+                            
+                            // 重新布局
+                            aiBubble.revalidate();
+                            chatPanel.revalidate();
+                            chatPanel.repaint();
+                            
+                            // 滚动到底部
+                            SwingUtilities.invokeLater(() -> {
+                                JScrollBar vertical = ((JScrollPane)chatPanel.getParent().getParent()).getVerticalScrollBar();
+                                vertical.setValue(vertical.getMaximum());
+                            });
+                        }),
+                        // 完成回调
+                        () -> SwingUtilities.invokeLater(() -> {
+                            inputArea.setEnabled(true);
+                            inputArea.requestFocus();
+                        })
+                    );
                 } catch (Exception e) {
                     SwingUtilities.invokeLater(() -> {
-                        // 移除"正在思考中..."
-                        chatPanel.remove(chatPanel.getComponentCount() - 1);
-                        // 显示错误消息
+                        chatPanel.remove(aiBubble);
                         addMessageBubble("Error: " + e.getMessage(), false);
-                        // 重新启用输入框
                         inputArea.setEnabled(true);
                         inputArea.requestFocus();
                     });
@@ -192,71 +249,46 @@ public class DeepSeekToolWindow {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
         bubble.setBackground(null);
 
+        // 创建文本区域
+        JTextArea textArea = new JTextArea();
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setBorder(JBUI.Borders.empty(8));
+        textArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+
+        // 设置颜色
         if (isUser) {
-            // 用户消息使用普通文本
-            JTextArea textArea = new JTextArea(message);
-            textArea.setEditable(false);
-            textArea.setLineWrap(true);
-            textArea.setWrapStyleWord(true);
             textArea.setBackground(new Color(0, 122, 255));
             textArea.setForeground(Color.WHITE);
-            textArea.setBorder(JBUI.Borders.empty(8));
-
-            // 设置最大宽度为面板宽度的 80%
-            int maxWidth = (int)(chatPanel.getWidth() * 0.8);
-            if (maxWidth > 0) {
-                textArea.setSize(maxWidth, Short.MAX_VALUE);
-                textArea.setPreferredSize(new Dimension(maxWidth, textArea.getPreferredSize().height));
-            }
-
             bubble.add(textArea, BorderLayout.EAST);
         } else {
-            // AI 回复使用 Markdown 渲染
-            JEditorPane editorPane = new JEditorPane();
-            editorPane.setEditorKit(createMarkdownEditorKit());
-            editorPane.setEditable(false);
-            editorPane.setOpaque(true);
-            editorPane.setBackground(new Color(58, 58, 58));
-            editorPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-
-            // 渲染 Markdown
-            Node document = markdownParser.parse(message);
-            String html = htmlRenderer.render(document);
-            editorPane.setText(wrapHtmlContent(html));
-
-            // 设置最大宽度为面板宽度的 80%
-            int maxWidth = (int)(chatPanel.getWidth() * 0.8);
-            if (maxWidth > 0) {
-                editorPane.setSize(maxWidth, Short.MAX_VALUE);
-                editorPane.setPreferredSize(new Dimension(maxWidth, editorPane.getPreferredSize().height));
-            }
-
-            bubble.add(editorPane, BorderLayout.WEST);
+            textArea.setBackground(new Color(58, 58, 58));
+            textArea.setForeground(Color.WHITE);
+            bubble.add(textArea, BorderLayout.WEST);
         }
 
+        // 将文本区域放入滚动面板
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setBorder(null);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+
+        // 设置最大宽度为面板宽度的 80%
+        int maxWidth = (int)(chatPanel.getWidth() * 0.8);
+        if (maxWidth > 0) {
+            // 设置文本
+            textArea.setText(message);
+            
+            // 设置首选大小
+            textArea.setSize(maxWidth, Short.MAX_VALUE);
+            int preferredHeight = textArea.getPreferredSize().height;
+            scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 16, 400)));
+        }
+
+        bubble.add(scrollPane);
         bubble.setBorder(JBUI.Borders.empty(5, 15));
         return bubble;
-    }
-
-    private HTMLEditorKit createMarkdownEditorKit() {
-        HTMLEditorKit kit = new HTMLEditorKit();
-        StyleSheet styleSheet = kit.getStyleSheet();
-
-        // 添加 Markdown 样式
-        styleSheet
-            .addRule(
-                "body { color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Arial, sans-serif; }");
-        styleSheet.addRule("code { background-color: #2B2B2B; padding: 2px 4px; border-radius: 3px; }");
-        styleSheet.addRule("pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; overflow-x: auto; }");
-        styleSheet.addRule("a { color: #589DF6; }");
-        styleSheet.addRule("p { margin: 0; padding: 0; }");
-        styleSheet.addRule("ul, ol { margin: 0; padding-left: 20px; }");
-
-        return kit;
-    }
-
-    private String wrapHtmlContent(String html) {
-        return "<html><body style='background-color: #3A3A3A; padding: 8px;'>" + html + "</body></html>";
     }
 
     private JBLabel createConfigLabel() {

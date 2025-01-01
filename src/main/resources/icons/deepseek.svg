@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-    <rect x="2" y="2" width="12" height="12" fill="#6C63FF" rx="2"/>
-    <path d="M4 8h8" stroke="white" stroke-width="2"/>
-    <path d="M8 4v8" stroke="white" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 13 13">
+    <g fill="none" fill-rule="evenodd">
+        <!-- 浅色主题图标 -->
+        <g id="light" style="display: none;">
+            <path fill="#007AFF" d="M6.5,0.5c-3.3,0-6,2.7-6,6s2.7,6,6,6s6-2.7,6-6S9.8,0.5,6.5,0.5z M6.5,11.5c-2.8,0-5-2.2-5-5s2.2-5,5-5
+            s5,2.2,5,5S9.3,11.5,6.5,11.5z"/>
+            <circle fill="#007AFF" cx="6.5" cy="6.5" r="3"/>
+        </g>
+        <!-- 深色主题图标 -->
+        <g id="dark">
+            <path fill="#0D6EFD" d="M6.5,0.5c-3.3,0-6,2.7-6,6s2.7,6,6,6s6-2.7,6-6S9.8,0.5,6.5,0.5z M6.5,11.5c-2.8,0-5-2.2-5-5s2.2-5,5-5
+            s5,2.2,5,5S9.3,11.5,6.5,11.5z"/>
+            <circle fill="#0D6EFD" cx="6.5" cy="6.5" r="3"/>
+        </g>
+    </g>
 </svg> 

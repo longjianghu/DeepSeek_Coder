@@ -35,6 +35,6 @@
     <toolWindow id="DeepSeek"
                 anchor="right"
                 factoryClass="com.sohocn.DeepSeek.window.DeepSeekToolWindowFactory"
-                icon="/icons/deepseek.svg"/>
+                icon="icons/deepseek.svg"/>
   </extensions>
 </idea-plugin>
