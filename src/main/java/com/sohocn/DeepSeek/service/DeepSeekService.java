@@ -24,7 +24,21 @@ public class DeepSeekService {
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
 
-    public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
+    // 创建一个 TokenUsage 类来存储 token 信息
+    public static class TokenUsage {
+        public final int promptTokens;
+        public final int completionTokens;
+        public final int totalTokens;
+
+        public TokenUsage(int promptTokens, int completionTokens, int totalTokens) {
+            this.promptTokens = promptTokens;
+            this.completionTokens = completionTokens;
+            this.totalTokens = totalTokens;
+        }
+    }
+
+    // 修改方法签名，添加 token 使用回调
+    public void streamMessage(String message, Consumer<String> onChunk, Consumer<TokenUsage> onTokenUsage, Runnable onComplete) throws IOException {
         String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
@@ -32,7 +46,7 @@ public class DeepSeekService {
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(API_URL);
-            
+
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
             httpPost.setHeader("Authorization", "Bearer " + apiKey);
@@ -40,17 +54,16 @@ public class DeepSeekService {
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "deepseek-chat");
-            requestBody.put("stream", true);  // 启用流式输出
+            requestBody.put("stream", true); // 启用流式输出
 
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(Map.of(
-                "role", "system",
-                "content", "You are a helpful assistant."
-            ));
+                    "role", "system",
+                    "content",
+                    "You are a helpful assistant specialized in programming and software development. Your task is to assist users with questions related to coding, debugging, software design, algorithms, and other programming-related topics. If a user asks a question outside of these areas, politely inform them that you are only able to assist with programming-related queries."));
             messages.add(Map.of(
-                "role", "user",
-                "content", message
-            ));
+                    "role", "user",
+                    "content", message));
             requestBody.put("messages", messages);
 
             // 转换为JSON
@@ -64,21 +77,34 @@ public class DeepSeekService {
                     try (BufferedReader reader = new BufferedReader(
                             new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
                         String line;
-                        
+
                         while ((line = reader.readLine()) != null) {
-                            if (line.isEmpty()) continue;
+                            if (line.isEmpty())
+                                continue;
                             if (line.startsWith("data: ")) {
                                 String jsonData = line.substring(6);
                                 if ("[DONE]".equals(jsonData)) {
                                     break;
                                 }
-                                
+
                                 try {
                                     JsonObject jsonObject = JsonParser.parseString(jsonData).getAsJsonObject();
+                                    
+                                    // 检查是否有 usage 信息
+                                    if (jsonObject.has("usage")) {
+                                        JsonObject usage = jsonObject.getAsJsonObject("usage");
+                                        TokenUsage tokenUsage = new TokenUsage(
+                                            usage.get("prompt_tokens").getAsInt(),
+                                            usage.get("completion_tokens").getAsInt(),
+                                            usage.get("total_tokens").getAsInt()
+                                        );
+                                        onTokenUsage.accept(tokenUsage);
+                                    }
+
                                     JsonObject delta = jsonObject.getAsJsonArray("choices")
                                             .get(0).getAsJsonObject()
                                             .getAsJsonObject("delta");
-                                    
+
                                     // 检查是否有 content 字段
                                     if (delta.has("content")) {
                                         String content = delta.get("content").getAsString();
@@ -95,4 +121,4 @@ public class DeepSeekService {
         }
         onComplete.run();
     }
-} 
+}

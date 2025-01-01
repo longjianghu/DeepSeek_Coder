@@ -1,7 +1,10 @@
 package com.sohocn.DeepSeek.window;
 
 import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
+import java.util.function.Consumer;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -176,7 +179,8 @@ public class DeepSeekToolWindow {
             // 创建 AI 回复的气泡
             JBPanel<JBPanel<?>> aiBubble = createMessageBubble("", false);
             JScrollPane scrollPane = (JScrollPane) aiBubble.getComponent(0);
-            JTextArea textArea = (JTextArea) scrollPane.getViewport().getView();
+            JEditorPane textArea = (JEditorPane) aiBubble.getClientProperty("textArea");
+
             chatPanel.add(aiBubble);
             chatPanel.revalidate();
             chatPanel.repaint();
@@ -192,15 +196,24 @@ public class DeepSeekToolWindow {
                         chunk -> SwingUtilities.invokeLater(() -> {
                             fullResponse.append(chunk);
                             
-                            // 更新文本内容
-                            textArea.setText(fullResponse.toString());
+                            // 更新原始消息内容
+                            @SuppressWarnings("unchecked")
+                            Consumer<String> updateMessage = (Consumer<String>) aiBubble.getClientProperty("updateMessage");
+                            if (updateMessage != null) {
+                                updateMessage.accept(fullResponse.toString());
+                            }
+                            
+                            // 渲染 Markdown
+                            Node document = markdownParser.parse(fullResponse.toString());
+                            String html = htmlRenderer.render(document);
+                            textArea.setText(wrapHtmlContent(html));
                             
                             // 调整大小
-                            int maxWidth = (int)(chatPanel.getWidth() * 0.8);
+                            int maxWidth = chatPanel.getWidth() - 80;
                             if (maxWidth > 0) {
                                 textArea.setSize(maxWidth, Short.MAX_VALUE);
                                 int preferredHeight = textArea.getPreferredSize().height;
-                                scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 16, 400)));
+                                scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 32, 500)));
                             }
                             
                             // 重新布局
@@ -213,6 +226,16 @@ public class DeepSeekToolWindow {
                                 JScrollBar vertical = ((JScrollPane)chatPanel.getParent().getParent()).getVerticalScrollBar();
                                 vertical.setValue(vertical.getMaximum());
                             });
+                        }),
+                        // 处理 token 使用情况
+                        tokenUsage -> SwingUtilities.invokeLater(() -> {
+                            JLabel tokenLabel = (JLabel)aiBubble.getClientProperty("tokenLabel");
+                            if (tokenLabel != null) {
+                                tokenLabel
+                                    .setText(String
+                                        .format("Tokens: %d prompt, %d completion, %d total", tokenUsage.promptTokens,
+                                            tokenUsage.completionTokens, tokenUsage.totalTokens));
+                            }
                         }),
                         // 完成回调
                         () -> SwingUtilities.invokeLater(() -> {
@@ -249,46 +272,185 @@ public class DeepSeekToolWindow {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
         bubble.setBackground(null);
 
-        // 创建文本区域
-        JTextArea textArea = new JTextArea();
+        // 创建文本区域（使用 JEditorPane 支持 Markdown）
+        JEditorPane textArea = new JEditorPane();
+        textArea.setEditorKit(createMarkdownEditorKit());
         textArea.setEditable(false);
-        textArea.setLineWrap(true);
-        textArea.setWrapStyleWord(true);
         textArea.setBorder(JBUI.Borders.empty(8));
+        textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         textArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
 
-        // 设置颜色
+        // 创建底部面板，包含 token 信息和复制图标
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        bottomPanel.setOpaque(false);
+
+        // Token 信息标签
+        JLabel tokenLabel = new JLabel("");
+        tokenLabel.setForeground(new Color(153, 153, 153));
+        tokenLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+
+        // 复制图标按钮
+        JLabel copyIcon = new JLabel("📋");
+        copyIcon.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        copyIcon.setForeground(new Color(153, 153, 153));
+        copyIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        copyIcon.setToolTipText("复制内容");
+
+        // 保存原始消息的引用
+        final String[] currentMessage = {message};
+
+        copyIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (!isUser) {
+                    String contentToCopy = currentMessage[0];
+                    if (contentToCopy != null && !contentToCopy.isEmpty()) {
+                        StringSelection selection = new StringSelection(contentToCopy);
+                        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                        clipboard.setContents(selection, selection);
+
+                        // 可选：显示复制成功提示
+                        copyIcon.setToolTipText("复制成功！");
+                        Timer timer = new Timer(1500, evt -> copyIcon.setToolTipText("复制内容"));
+                        timer.setRepeats(false);
+                        timer.start();
+                    }
+                }
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                copyIcon.setForeground(Color.WHITE);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                copyIcon.setForeground(new Color(153, 153, 153));
+            }
+        });
+
+        if (!isUser) {
+            bottomPanel.add(tokenLabel);
+            bottomPanel.add(copyIcon);
+        }
+
+        // 创建一个带圆角边框的面板
+        JPanel roundedPanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D)g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // 绘制圆角背景
+                g2.setColor(isUser ? new Color(0, 122, 255) : new Color(58, 58, 58));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+
+                // 绘制边框
+                g2.setColor(new Color(80, 80, 80));
+                g2.setStroke(new BasicStroke(1f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+
+                g2.dispose();
+            }
+        };
+        roundedPanel.setOpaque(false);
+
+        // 创建一个面板来包含文本区域和底部面板
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setOpaque(false);
+        contentPanel.add(textArea, BorderLayout.CENTER);
+        if (!isUser) {
+            contentPanel.add(bottomPanel, BorderLayout.SOUTH);
+        }
+        roundedPanel.add(contentPanel);
+
+        // 设置颜色和内容
         if (isUser) {
             textArea.setBackground(new Color(0, 122, 255));
             textArea.setForeground(Color.WHITE);
-            bubble.add(textArea, BorderLayout.EAST);
+            textArea.setText(message);
+            bubble.add(roundedPanel, BorderLayout.EAST);
         } else {
             textArea.setBackground(new Color(58, 58, 58));
             textArea.setForeground(Color.WHITE);
-            bubble.add(textArea, BorderLayout.WEST);
+            // 渲染 Markdown
+            Node document = markdownParser.parse(message);
+            String html = htmlRenderer.render(document);
+            textArea.setText(wrapHtmlContent(html));
+            bubble.add(roundedPanel, BorderLayout.WEST);
         }
 
-        // 将文本区域放入滚动面板
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        // 将内容面板放入滚动面板
+        JScrollPane scrollPane = new JScrollPane(roundedPanel);
         scrollPane.setBorder(null);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
 
-        // 设置最大宽度为面板宽度的 80%
-        int maxWidth = (int)(chatPanel.getWidth() * 0.8);
+        // 设置宽度为面板宽度减去边距
+        int maxWidth = chatPanel.getWidth() - 80;
         if (maxWidth > 0) {
-            // 设置文本
-            textArea.setText(message);
-            
-            // 设置首选大小
             textArea.setSize(maxWidth, Short.MAX_VALUE);
             int preferredHeight = textArea.getPreferredSize().height;
-            scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 16, 400)));
+            scrollPane.setPreferredSize(new Dimension(maxWidth, Math.min(preferredHeight + 32, 500)));
         }
 
         bubble.add(scrollPane);
         bubble.setBorder(JBUI.Borders.empty(5, 15));
+
+        // 保存 token 标签的引用
+        bubble.putClientProperty("tokenLabel", tokenLabel);
+
+        // 在 sendMessage 方法的回调中更新消息内容
+        if (!isUser) {
+            bubble.putClientProperty("updateMessage", (Consumer<String>)newMessage -> {
+                currentMessage[0] = newMessage;
+            });
+        }
+
+        // 保存文本区域的引用
+        bubble.putClientProperty("textArea", textArea);
+
         return bubble;
+    }
+
+    private HTMLEditorKit createMarkdownEditorKit() {
+        HTMLEditorKit kit = new HTMLEditorKit();
+        StyleSheet styleSheet = kit.getStyleSheet();
+
+        // 添加 Markdown 样式
+        styleSheet
+            .addRule(
+                "body { color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Arial, sans-serif; margin: 0; padding: 0; }");
+        styleSheet
+            .addRule(
+                "code { background-color: #2B2B2B; padding: 2px 4px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; word-wrap: break-word; }");
+        styleSheet
+            .addRule(
+                "pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; margin: 10px 0; white-space: pre-wrap; max-width: 100%; }");
+        styleSheet.addRule("pre code { background-color: transparent; padding: 0; }");
+        styleSheet.addRule("* { max-width: 100%; }"); // 确保所有元素不超出容器
+        styleSheet.addRule("img { max-width: 100%; height: auto; }"); // 图片自适应
+        styleSheet.addRule("a { color: #589DF6; }");
+        styleSheet.addRule("p { margin: 8px 0; padding: 0; }");
+        styleSheet.addRule("ul, ol { margin: 8px 0; padding-left: 20px; }");
+        styleSheet.addRule("li { margin: 4px 0; }");
+        styleSheet
+            .addRule(
+                "blockquote { margin: 8px 0; padding-left: 10px; border-left: 3px solid #4A4A4A; color: #BBBBBB; }");
+        styleSheet.addRule("strong { color: #FFFFFF; font-weight: bold; }");
+
+        return kit;
+    }
+
+    private String wrapHtmlContent(String html) {
+        // 设置固定宽度和自动换行
+        return String
+            .format("<html><head><style>"
+                + "body { background-color: #3A3A3A; margin: 0; padding: 0; width: %dpx; word-wrap: break-word; }"
+                + "pre { white-space: pre-wrap; max-width: 100%%; overflow-x: hidden; }"
+                + "code { word-wrap: break-word; white-space: pre-wrap; }" + "</style></head><body>%s</body></html>",
+                chatPanel.getWidth() - 100, // 减去足够的边距
+                html);
     }
 
     private JBLabel createConfigLabel() {
