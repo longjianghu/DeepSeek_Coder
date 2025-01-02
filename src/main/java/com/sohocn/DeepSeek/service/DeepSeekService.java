@@ -1,15 +1,5 @@
 package com.sohocn.DeepSeek.service;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.intellij.ide.util.PropertiesComponent;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -19,6 +9,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.intellij.ide.util.PropertiesComponent;
 
 public class DeepSeekService {
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
@@ -79,8 +80,10 @@ public class DeepSeekService {
                         String line;
 
                         while ((line = reader.readLine()) != null) {
-                            if (line.isEmpty())
+                            if (line.isEmpty()) {
                                 continue;
+                            }
+
                             if (line.startsWith("data: ")) {
                                 String jsonData = line.substring(6);
                                 if ("[DONE]".equals(jsonData)) {
@@ -90,17 +93,6 @@ public class DeepSeekService {
                                 try {
                                     JsonObject jsonObject = JsonParser.parseString(jsonData).getAsJsonObject();
                                     
-                                    // 检查是否有 usage 信息
-                                    if (jsonObject.has("usage")) {
-                                        JsonObject usage = jsonObject.getAsJsonObject("usage");
-                                        TokenUsage tokenUsage = new TokenUsage(
-                                            usage.get("prompt_tokens").getAsInt(),
-                                            usage.get("completion_tokens").getAsInt(),
-                                            usage.get("total_tokens").getAsInt()
-                                        );
-                                        onTokenUsage.accept(tokenUsage);
-                                    }
-
                                     JsonObject delta = jsonObject.getAsJsonArray("choices")
                                             .get(0).getAsJsonObject()
                                             .getAsJsonObject("delta");

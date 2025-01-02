@@ -1,22 +1,14 @@
 package com.sohocn.DeepSeek.window;
 
 import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.event.HyperlinkEvent;
 import javax.swing.plaf.basic.BasicScrollBarUI;
-import javax.swing.text.html.HTMLEditorKit;
-import javax.swing.text.html.StyleSheet;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -37,10 +29,6 @@ import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.DeepSeek.service.DeepSeekService;
 import com.sohocn.DeepSeek.settings.ApiKeyChangeNotifier;
-import com.vladsch.flexmark.html.HtmlRenderer;
-import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.ast.Node;
-import com.vladsch.flexmark.util.data.MutableDataSet;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
@@ -49,6 +37,7 @@ public class DeepSeekToolWindow {
     private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
     private static final String HISTORY_LIMIT = "com.sohocn.deepseek.historyLimit";
     private static final int MESSAGE_TOTAL_MARGIN = 30; // 消息气泡的总边距
+    private static final int MESSAGE_HORIZONTAL_MARGIN = 20; // 左右边距各20像素
     private static final Gson gson = new GsonBuilder().create();
     private final JPanel content;
     private final JBPanel<JBPanel<?>> chatPanel;
@@ -67,7 +56,7 @@ public class DeepSeekToolWindow {
         content.setBackground(backgroundColor);
 
         // 聊天区域
-        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 1, true, false));
+        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0, true, false));
         chatPanel.setBackground(backgroundColor);
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
         chatScrollPane.setBackground(backgroundColor);
@@ -122,24 +111,6 @@ public class DeepSeekToolWindow {
         rightPanel.add(settingsLabel);
         rightPanel.add(clearHistoryLabel);
         topPanel.add(rightPanel, BorderLayout.EAST);
-
-        // 监听输入变化
-        inputArea.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                // 不需要任何操作
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                // 不需要任何操作
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                // 不需要任何操作
-            }
-        });
 
         // 添加回车发送功能
         inputArea.addKeyListener(new KeyAdapter() {
@@ -243,12 +214,12 @@ public class DeepSeekToolWindow {
                                 textArea.setText(wrapContent(currentResponse, false));
 
                                 // 调整大小
-                                int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
+                                int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
                                 if (maxWidth > 0) {
                                     textArea.setSize(maxWidth, Short.MAX_VALUE);
                                     int preferredHeight = textArea.getPreferredSize().height;
                                     ((JPanel)aiBubble.getComponent(0)).setPreferredSize(
-                                        new Dimension(maxWidth, preferredHeight + 16)
+                                        new Dimension(maxWidth, preferredHeight + 10)
                                     );
                                 }
 
@@ -297,12 +268,12 @@ public class DeepSeekToolWindow {
     private JBPanel<JBPanel<?>> createMessageBubble(String message, boolean isUser) {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
         bubble.setBackground(null);
-        bubble.setBorder(JBUI.Borders.empty(1, 10));
+        bubble.setBorder(JBUI.Borders.empty(0, MESSAGE_HORIZONTAL_MARGIN));
 
         // 创建文本区域
         JEditorPane textArea = new JEditorPane();
         textArea.setEditable(false);
-        textArea.setBorder(JBUI.Borders.empty(8));
+        textArea.setBorder(JBUI.Borders.empty(2));
         textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
         textArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
 
@@ -328,12 +299,12 @@ public class DeepSeekToolWindow {
         roundedPanel.add(textArea);
         bubble.add(roundedPanel, BorderLayout.WEST);
 
-        // 统一设置大小
-        int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
+        // 统一设置大小，确保不超过侧边栏宽度
+        int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
         if (maxWidth > 0) {
             textArea.setSize(maxWidth, Short.MAX_VALUE);
             int preferredHeight = textArea.getPreferredSize().height;
-            roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 16));
+            roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 10));
         }
 
         // 保存文本区域的引用
@@ -343,34 +314,58 @@ public class DeepSeekToolWindow {
         return bubble;
     }
 
-    private String wrapHtmlContent(String message) {
-        // 简单的代码块检测和处理
+    private String wrapContent(String message, boolean isUser) {
         StringBuilder html = new StringBuilder();
-        String[] parts = message.split("(```[^`]*```)|(`[^`]*`)");
-        String[] codes = message.split("[^`]+");
+        String[] parts = message.split("```");
         
-        int codeIndex = 0;
         for (int i = 0; i < parts.length; i++) {
-            // 处理普通文本
-            String text = parts[i].replace("<", "&lt;")
-                                .replace(">", "&gt;")
-                                .replace("\n", "<br>")
-                                .replace(" ", "&nbsp;");
-            html.append("<p>").append(text).append("</p>");
-            
-            // 处理代码块
-            if (codeIndex < codes.length && codes[codeIndex].startsWith("```")) {
-                String code = codes[codeIndex].substring(3, codes[codeIndex].length() - 3);
-                html.append("<pre><code>").append(code).append("</code></pre>");
-                codeIndex++;
+            if (i % 2 == 0) {
+                // 普通文本
+                String text = parts[i].replace("<", "&lt;")
+                                    .replace(">", "&gt;")
+                                    .replace("\n", "<br>")
+                                    .replace(" ", "&nbsp;");
+                if (isUser) {
+                    // 用户消息使用带边框的样式
+                    html.append("<div class='user-message'>").append(text).append("</div>");
+                } else {
+                    // AI 回复直接显示文本
+                    html.append("<div class='ai-message'>").append(text).append("</div>");
+                }
+            } else {
+                // 代码块
+                html.append("<pre><code>").append(parts[i]).append("</code></pre>");
             }
         }
 
         return String.format(
             "<html><head><style>" +
             "body { margin: 0; padding: 0; color: #DCDCDC; }" +
-            "p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }" +
-            "pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; margin: 10px 0; overflow-x: auto; }" +
+            // 用户消息样式
+            ".user-message { " +
+            "   background-color: #2B2B2B; " +
+            "   border: 1px solid #646464; " +
+            "   border-radius: 5px; " +
+            "   padding: 8px; " +
+            "   margin: 0; " +
+            "   white-space: pre-wrap; " +
+            "   word-wrap: break-word; " +
+            "}" +
+            // AI 消息样式
+            ".ai-message { " +
+            "   padding: 2px 0; " +  // 减小上下内边距
+            "   margin: 0; " +
+            "   white-space: pre-wrap; " +
+            "   word-wrap: break-word; " +
+            "}" +
+            // 代码块样式
+            "pre { " +
+            "   background-color: #2B2B2B; " +
+            "   padding: 10px; " +
+            "   border-radius: 5px; " +
+            "   margin: 4px 0; " +  // 减小代码块的上下边距
+            "   overflow-x: auto; " +
+            "}" +
             "code { font-family: 'JetBrains Mono', monospace; }" +
             "</style></head><body>%s</body></html>",
             html.toString()
@@ -416,19 +411,14 @@ public class DeepSeekToolWindow {
                         JEditorPane textArea = (JEditorPane)bubble.getClientProperty("textArea");
 
                         if (textArea != null && originalMessage != null) {
-                            int maxWidth = Math.min(chatPanel.getWidth() - MESSAGE_TOTAL_MARGIN - 40, 600);
-                            
-                            // 只有包含代码块的消息才需要重新渲染
-                            if (originalMessage.contains("```")) {
-                                textArea.setContentType("text/html");
-                                textArea.setText(wrapContent(originalMessage, false));
-                            }
+                            // 使用相同的宽度计算逻辑
+                            int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
                             
                             // 调整大小
                             textArea.setSize(maxWidth, Short.MAX_VALUE);
                             int preferredHeight = textArea.getPreferredSize().height;
                             ((JPanel)bubble.getComponent(0)).setPreferredSize(
-                                new Dimension(maxWidth, preferredHeight + 32)
+                                new Dimension(maxWidth, preferredHeight + 10)
                             );
                         }
                     }
@@ -446,14 +436,14 @@ public class DeepSeekToolWindow {
             List<ChatMessage> messages = new ArrayList<>();
             Component[] components = chatPanel.getComponents();
 
-            for (Component component : components) {
-                if (component instanceof JBPanel) {
-                    JBPanel<?> bubble = (JBPanel<?>) component;
+            for (int i = 0; i < components.length; i++) {
+                if (components[i] instanceof JBPanel) {
+                    JBPanel<?> bubble = (JBPanel<?>)components[i];
                     String message = (String) bubble.getClientProperty("originalMessage");
-                    // 从 bubble 中获取 textArea 并检查其内容来判断是否为用户消息
-                    JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
-                    boolean isUser = textArea != null && 
-                                   textArea.getText().contains("user-message");
+
+                    // 通过判断消息的位置来确定是否为用户消息
+                    // 用户消息和 AI 回复总是成对出现，用户消息在偶数位置
+                    boolean isUser = (i % 2 == 0);
 
                     if (message != null && !message.isEmpty()) {
                         messages.add(new ChatMessage(message, isUser));
@@ -732,50 +722,5 @@ public class DeepSeekToolWindow {
 
             timer.start();
         });
-    }
-
-    private String wrapContent(String message, boolean isUser) {
-        // 只处理代码块
-        StringBuilder html = new StringBuilder();
-        String[] parts = message.split("```");
-        
-        for (int i = 0; i < parts.length; i++) {
-            if (i % 2 == 0) {
-                // 普通文本
-                String text = parts[i].replace("<", "&lt;")
-                                    .replace(">", "&gt;")
-                                    .replace("\n", "<br>")
-                                    .replace(" ", "&nbsp;");
-                if (isUser) {
-                    // 只为用户消息添加边框样式
-                    html.append("<div class='user-message'>").append(text).append("</div>");
-                } else {
-                    // AI 回复使用普通文本样式
-                    html.append(text);
-                }
-            } else {
-                // 代码块
-                html.append("<pre><code>").append(parts[i]).append("</code></pre>");
-            }
-        }
-
-        return String.format(
-            "<html><head><style>" +
-            "body { margin: 0; padding: 0; color: #DCDCDC; }" +
-            // 用户消息的样式
-            ".user-message { " +
-            "   background-color: #2B2B2B; " +
-            "   border: 1px solid #646464; " +
-            "   border-radius: 5px; " +
-            "   padding: 8px; " +
-            "   margin: 0; " +
-            "   white-space: pre-wrap; " +
-            "   word-wrap: break-word; " +
-            "}" +
-            "pre { background-color: #2B2B2B; padding: 10px; border-radius: 5px; margin: 10px 0; overflow-x: auto; }" +
-            "code { font-family: 'JetBrains Mono', monospace; }" +
-            "</style></head><body>%s</body></html>",
-            html.toString()
-        );
     }
 } 
