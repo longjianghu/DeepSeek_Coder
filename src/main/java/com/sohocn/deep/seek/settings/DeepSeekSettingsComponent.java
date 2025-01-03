@@ -1,4 +1,4 @@
-package com.sohocn.DeepSeek.settings;
+package com.sohocn.deep.seek.settings;
 
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -6,8 +6,6 @@ import java.awt.event.MouseEvent;
 import java.net.URI;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;

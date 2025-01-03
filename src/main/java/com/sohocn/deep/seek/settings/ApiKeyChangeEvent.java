@@ -1,4 +1,4 @@
-package com.sohocn.DeepSeek.settings;
+package com.sohocn.deep.seek.settings;
 
 public class ApiKeyChangeEvent {
     private final String apiKey;

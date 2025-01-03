@@ -5,16 +5,16 @@
 
   <!-- Public plugin name should be written in Title Case.
        Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-  <name>DeepSeek</name>
+  <name>DeepSeek Coder</name>
 
   <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-  <vendor email="215241062@qq.com" url="https://www.sohocn.net">龙江湖</vendor>
+  <vendor email="215241062@qq.com">龙江湖</vendor>
 
   <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
        Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
        Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
   <description><![CDATA[
-    基于DeepSeek开发的AI辅助编程插件
+    DeepSeek Coder是基于DeepSeek大模型开发的辅助编程插件，旨在提升程序员的编码效率和代码质量。通过先进的人工智能技术，DeepSeek能够实时分析您的代码并提供智能建议，帮助您快速解决编程难题。
   ]]></description>
 
   <!-- Product and plugin compatibility requirements.
@@ -27,14 +27,14 @@
   <extensions defaultExtensionNs="com.intellij">
     <!-- 配置页面 -->
     <applicationConfigurable
-            instance="com.sohocn.DeepSeek.settings.DeepSeekSettingsConfigurable"
-            id="com.sohocn.DeepSeek.settings.DeepSeekSettingsConfigurable"
-            displayName="DeepSeek"/>
+            instance="com.sohocn.deep.seek.settings.DeepSeekSettingsConfigurable"
+            id="com.sohocn.deep.seek.settings.DeepSeekSettingsConfigurable"
+            displayName="DeepSeek Coder"/>
 
     <!-- 工具窗口 -->
     <toolWindow id="DeepSeek"
                 anchor="right"
-                factoryClass="com.sohocn.DeepSeek.window.DeepSeekToolWindowFactory"
+                factoryClass="com.sohocn.deep.seek.window.DeepSeekToolWindowFactory"
                 icon="icons/deepseek.svg"
                 darkIcon="icons/deepseek.svg"/>
   </extensions>

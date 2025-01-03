@@ -1,9 +1,10 @@
-package com.sohocn.DeepSeek.settings;
-
-import com.intellij.openapi.options.Configurable;
-import org.jetbrains.annotations.Nullable;
+package com.sohocn.deep.seek.settings;
 
 import javax.swing.*;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.intellij.openapi.options.Configurable;
 
 public class DeepSeekSettingsConfigurable implements Configurable {
     private DeepSeekSettingsComponent mySettingsComponent;

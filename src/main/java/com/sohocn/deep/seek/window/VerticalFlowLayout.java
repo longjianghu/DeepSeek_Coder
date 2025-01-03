@@ -1,4 +1,4 @@
-package com.sohocn.DeepSeek.window;
+package com.sohocn.deep.seek.window;
 
 import java.awt.*;
 

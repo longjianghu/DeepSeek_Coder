@@ -1,4 +1,4 @@
-package com.sohocn.DeepSeek.window;
+package com.sohocn.deep.seek.window;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -27,8 +27,8 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
-import com.sohocn.DeepSeek.service.DeepSeekService;
-import com.sohocn.DeepSeek.settings.ApiKeyChangeNotifier;
+import com.sohocn.deep.seek.service.DeepSeekService;
+import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
@@ -227,7 +227,7 @@ public class DeepSeekToolWindow {
                                 aiBubble.revalidate();
                                 chatPanel.revalidate();
                             }),
-                            tokenUsage -> {}, // 忽略 token 信息
+                            // 忽略 token 信息
                             () -> SwingUtilities.invokeLater(() -> {
                                 inputArea.setEnabled(true);
                                 inputArea.requestFocus();
@@ -466,7 +466,7 @@ public class DeepSeekToolWindow {
         }
     }
 
-    // 加载聊天记录
+    // 修改加载聊天记录方法
     private void loadChatHistory() {
         try {
             String json = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
@@ -487,7 +487,17 @@ public class DeepSeekToolWindow {
 
                     chatPanel.revalidate();
                     chatPanel.repaint();
-                    smoothScrollToBottom();
+
+                    // 使用 SwingUtilities.invokeLater 确保在 UI 更新后滚动
+                    SwingUtilities.invokeLater(() -> {
+                        // 等待一个短暂的时间，确保组件已经完全布局
+                        Timer timer = new Timer(100, e -> {
+                            smoothScrollToBottom();
+                            ((Timer)e.getSource()).stop();
+                        });
+                        timer.setRepeats(false);
+                        timer.start();
+                    });
                 }
             }
         } catch (Exception e) {

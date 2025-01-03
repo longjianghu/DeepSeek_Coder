@@ -1,4 +1,4 @@
-package com.sohocn.DeepSeek.settings;
+package com.sohocn.deep.seek.settings;
 
 import com.intellij.util.messages.Topic;
 
