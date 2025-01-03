@@ -36,7 +36,7 @@ public class DeepSeekToolWindow {
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
     private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
     private static final String HISTORY_LIMIT = "com.sohocn.deepseek.historyLimit";
-    private static final int MESSAGE_TOTAL_MARGIN = 30; // 消息气泡的总边距
+    // 消息气泡的总边距
     private static final int MESSAGE_HORIZONTAL_MARGIN = 20; // 左右边距各20像素
     private static final Gson gson = new GsonBuilder().create();
     private final JPanel content;

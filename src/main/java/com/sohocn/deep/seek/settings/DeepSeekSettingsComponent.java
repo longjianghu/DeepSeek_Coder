@@ -17,7 +17,7 @@ import com.intellij.util.ui.JBUI;
 public class DeepSeekSettingsComponent {
     private final JPanel myMainPanel;
     private final JBTextField apiKeyField = new JBTextField();
-    private final JSlider historyLimitSlider = new JSlider(JSlider.HORIZONTAL, 0, 50, 10);
+    private final JSlider historyLimitSlider = new JSlider(JSlider.HORIZONTAL, 1, 20, 3);
     private final JLabel historyLimitLabel = new JLabel("10");
     private String originalApiKey;
     private int originalHistoryLimit;
