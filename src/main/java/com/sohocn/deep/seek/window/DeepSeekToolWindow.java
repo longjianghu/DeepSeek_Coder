@@ -22,7 +22,6 @@ import com.intellij.openapi.project.ProjectManagerListener;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
@@ -56,7 +55,7 @@ public class DeepSeekToolWindow {
         content.setBackground(backgroundColor);
 
         // 聊天区域
-        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0, true, false));
+        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
         chatPanel.setBackground(backgroundColor);
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
         chatScrollPane.setBackground(backgroundColor);
@@ -370,22 +369,6 @@ public class DeepSeekToolWindow {
             "</style></head><body>%s</body></html>",
             html
         );
-    }
-
-    private JBLabel createConfigLabel() {
-        JBLabel label = new JBLabel("<html><u>你还没有配置DeepSeek的API KEY,请点击这里配置！</u></html>");
-        label.setForeground(Color.BLUE);
-        label.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        label.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        
-        label.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                ShowSettingsUtil.getInstance().showSettingsDialog(project, "DeepSeek");
-            }
-        });
-        
-        return label;
     }
 
     private void checkApiKeyConfig() {

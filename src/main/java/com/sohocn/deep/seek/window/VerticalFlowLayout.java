@@ -4,20 +4,9 @@ import java.awt.*;
 
 public class VerticalFlowLayout extends FlowLayout {
     public static final int TOP = 0;
-    public static final int CENTER = 1;
-    public static final int BOTTOM = 2;
 
-    private final boolean verticalFill;
-    private final int horizontalFill;
-
-    public VerticalFlowLayout(int align, int hgap, int vgap, boolean hfill, boolean vfill) {
+    public VerticalFlowLayout(int align, int hgap, int vgap) {
         super(align, hgap, vgap);
-        this.horizontalFill = hfill ? 1 : 0;
-        this.verticalFill = vfill;
-    }
-
-    public VerticalFlowLayout() {
-        this(TOP, 5, 5, true, false);
     }
 
     @Override
@@ -35,7 +24,6 @@ public class VerticalFlowLayout extends FlowLayout {
         synchronized (target.getTreeLock()) {
             Insets insets = target.getInsets();
             int maxwidth = target.getWidth() - (insets.left + insets.right);
-            int maxheight = target.getHeight() - (insets.top + insets.bottom);
             int nmembers = target.getComponentCount();
             int y = insets.top;
             
