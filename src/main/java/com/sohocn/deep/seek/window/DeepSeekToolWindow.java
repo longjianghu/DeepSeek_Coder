@@ -368,7 +368,7 @@ public class DeepSeekToolWindow {
             "}" +
             "code { font-family: 'JetBrains Mono', monospace; }" +
             "</style></head><body>%s</body></html>",
-            html.toString()
+            html
         );
     }
 
