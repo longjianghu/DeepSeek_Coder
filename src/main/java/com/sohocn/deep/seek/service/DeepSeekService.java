@@ -99,6 +99,7 @@ public class DeepSeekService {
                                 // 检查是否有 content 字段
                                 if (delta.has("content")) {
                                     String content = delta.get("content").getAsString();
+                                    // 直接传递原始内容，由显示层处理渲染
                                     onChunk.accept(content);
                                 }
                             } catch (Exception e) {

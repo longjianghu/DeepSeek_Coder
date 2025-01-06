@@ -28,6 +28,7 @@ import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.service.DeepSeekService;
 import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
+import com.sohocn.deep.seek.utils.MarkdownRenderer;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
@@ -209,18 +210,11 @@ public class DeepSeekToolWindow {
 
                                 // 更新消息内容
                                 JEditorPane textArea = (JEditorPane) aiBubble.getClientProperty("textArea");
-                                textArea.setContentType("text/html");
-                                textArea.setText(wrapContent(currentResponse, false));
+                                textArea.setText(MarkdownRenderer.renderMarkdown(currentResponse));
 
-                                // 调整大小
-                                int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
-                                if (maxWidth > 0) {
-                                    textArea.setSize(maxWidth, Short.MAX_VALUE);
-                                    int preferredHeight = textArea.getPreferredSize().height;
-                                    ((JPanel)aiBubble.getComponent(0)).setPreferredSize(
-                                        new Dimension(maxWidth, preferredHeight + 10)
-                                    );
-                                }
+                                // 调整大小，考虑侧边栏宽度
+                                int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
+                                adjustMessageSize(aiBubble, maxWidth);
 
                                 // 重新布局
                                 aiBubble.revalidate();
@@ -247,7 +241,7 @@ public class DeepSeekToolWindow {
     }
 
     private void addMessageBubble(String message, boolean isUser) {
-        JBPanel<JBPanel<?>> bubble = createMessageBubble(message, isUser);
+        JBPanel<JBPanel<?>> bubble = (JBPanel<JBPanel<?>>) createMessageBubble(message, isUser);
         chatPanel.add(bubble);
 
         // 检查是否超过历史记录限制
@@ -266,109 +260,86 @@ public class DeepSeekToolWindow {
 
     private JBPanel<JBPanel<?>> createMessageBubble(String message, boolean isUser) {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
-        bubble.setBackground(null);
-        bubble.setBorder(JBUI.Borders.empty(0, MESSAGE_HORIZONTAL_MARGIN));
+        bubble.setBackground(isUser ? new Color(40, 40, 40) : new Color(35, 35, 35));
+        bubble.setBorder(JBUI.Borders.empty(10));
 
-        // 创建文本区域
+        // 创建消息文本区域
         JEditorPane textArea = new JEditorPane();
+        textArea.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
         textArea.setEditable(false);
-        textArea.setBorder(JBUI.Borders.empty(2));
+        textArea.setBackground(bubble.getBackground());
+        textArea.setBorder(null);
         textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        textArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
 
-        // 创建一个带圆角边框的面板
-        JPanel roundedPanel = new JPanel(new BorderLayout()) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D)g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.dispose();
-            }
-        };
-        roundedPanel.setOpaque(false);
+        // 创建一个面板来包装文本区域
+        JBPanel<JBPanel<?>> textPanel = new JBPanel<>(new BorderLayout());
+        textPanel.setBackground(bubble.getBackground());
+        textPanel.add(textArea, BorderLayout.CENTER);
 
-        // 统一设置文本内容的渲染逻辑
-        textArea.setBackground(null);
-        textArea.setForeground(new Color(220, 220, 220));
-        
-        // 所有消息都使用 HTML 渲染，以支持样式
-        textArea.setContentType("text/html");
-        textArea.setText(wrapContent(message, isUser));
-
-        roundedPanel.add(textArea);
-        bubble.add(roundedPanel, BorderLayout.WEST);
-
-        // 统一设置大小，确保不超过侧边栏宽度
-        int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
-        if (maxWidth > 0) {
-            textArea.setSize(maxWidth, Short.MAX_VALUE);
-            int preferredHeight = textArea.getPreferredSize().height;
-            roundedPanel.setPreferredSize(new Dimension(maxWidth, preferredHeight + 10));
+        // 渲染消息内容
+        if (isUser) {
+            // 用户消息使用简单的 HTML 包装
+            String escapedMessage = message.replace("<", "&lt;")
+                                        .replace(">", "&gt;")
+                                        .replace("\n", "<br>");
+            String userContent = String.format(
+                "<body style='margin:0;padding:8px;" +
+                "background-color:#2B2B2B;border:1px solid #646464;" +
+                "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" +
+                "%s</body>", escapedMessage);
+            textArea.setText(MarkdownRenderer.renderHtml(userContent));
+        } else {
+            // AI 消息使用 Markdown 渲染
+            textArea.setText(MarkdownRenderer.renderMarkdown(message));
         }
 
-        // 保存文本区域的引用
-        bubble.putClientProperty("textArea", textArea);
+        // 存储原始消息和文本区域
         bubble.putClientProperty("originalMessage", message);
+        bubble.putClientProperty("textArea", textArea);
+        bubble.putClientProperty("textPanel", textPanel);
+
+        // 添加到气泡
+        bubble.add(textPanel, BorderLayout.CENTER);
 
         return bubble;
     }
 
-    private String wrapContent(String message, boolean isUser) {
-        StringBuilder html = new StringBuilder();
-        String[] parts = message.split("```");
+    private void adjustMessageSize(JBPanel<JBPanel<?>> bubble, int maxWidth) {
+        if (maxWidth <= 0) return;
         
-        for (int i = 0; i < parts.length; i++) {
-            if (i % 2 == 0) {
-                // 普通文本
-                String text = parts[i].replace("<", "&lt;")
-                                    .replace(">", "&gt;")
-                                    .replace("\n", "<br>")
-                                    .replace(" ", "&nbsp;");
-                if (isUser) {
-                    // 用户消息使用带边框的样式
-                    html.append("<div class='user-message'>").append(text).append("</div>");
-                } else {
-                    // AI 回复直接显示文本
-                    html.append("<div class='ai-message'>").append(text).append("</div>");
-                }
-            } else {
-                // 代码块
-                html.append("<pre><code>").append(parts[i]).append("</code></pre>");
-            }
-        }
+        JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
+        JBPanel<?> textPanel = (JBPanel<?>) bubble.getClientProperty("textPanel");
+        
+        // 计算实际可用宽度，考虑边距和滚动条
+        int availableWidth = Math.min(maxWidth, chatPanel.getParent().getWidth() - 40);  // 使用滚动面板的宽度
+        
+        // 设置最大宽度并计算首选高度
+        textArea.setSize(availableWidth, Short.MAX_VALUE);
+        int preferredHeight = textArea.getPreferredSize().height;
+        
+        // 设置面板大小，添加一些垂直内边距
+        textPanel.setPreferredSize(new Dimension(availableWidth, preferredHeight + 10));
+        
+        bubble.revalidate();
+    }
 
-        return String.format(
-            "<html><head><style>" +
-            "body { margin: 0; padding: 0; color: #DCDCDC; }" +
-            // 用户消息样式
-            ".user-message { " +
-            "   background-color: #2B2B2B; " +
-            "   border: 1px solid #646464; " +
-            "   border-radius: 5px; " +
-            "   padding: 8px; " +
-            "   margin: 0; " +
-            "   white-space: pre-wrap; " +
-            "   word-wrap: break-word; " +
-            "}" +
-            // AI 消息样式
-            ".ai-message { " +
-            "   padding: 2px 0; " +  // 减小上下内边距
-            "   margin: 0; " +
-            "   white-space: pre-wrap; " +
-            "   word-wrap: break-word; " +
-            "}" +
-            // 代码块样式
-            "pre { " +
-            "   background-color: #2B2B2B; " +
-            "   padding: 10px; " +
-            "   border-radius: 5px; " +
-            "   margin: 4px 0; " +  // 减小代码块的上下边距
-            "   overflow-x: auto; " +
-            "}" +
-            "code { font-family: 'JetBrains Mono', monospace; }" +
-            "</style></head><body>%s</body></html>",
-            html
-        );
+    private void updateMessageContent(JBPanel<JBPanel<?>> bubble, String message, boolean isUser) {
+        JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
+        if (isUser) {
+            String escapedMessage = message.replace("<", "&lt;")
+                                        .replace(">", "&gt;")
+                                        .replace("\n", "<br>");
+            String userContent = String.format(
+                "<body style='margin:0;padding:8px;" +
+                "background-color:#2B2B2B;border:1px solid #646464;" +
+                "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" +
+                "%s</body>", escapedMessage);
+            textArea.setText(MarkdownRenderer.renderHtml(userContent));
+        } else {
+            textArea.setText(MarkdownRenderer.renderMarkdown(message));
+        }
+        bubble.putClientProperty("originalMessage", message);
     }
 
     private void checkApiKeyConfig() {
@@ -384,31 +355,18 @@ public class DeepSeekToolWindow {
 
     // 添加组件大小变化监听
     private void addComponentListener() {
-        chatPanel.addComponentListener(new ComponentAdapter() {
+        content.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
+                // 当窗口大小改变时，重新调整所有消息气泡的大小
+                int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
+                
                 for (Component component : chatPanel.getComponents()) {
                     if (component instanceof JBPanel) {
-                        JBPanel<?> bubble = (JBPanel<?>)component;
-                        String originalMessage = (String)bubble.getClientProperty("originalMessage");
-                        JEditorPane textArea = (JEditorPane)bubble.getClientProperty("textArea");
-
-                        if (textArea != null && originalMessage != null) {
-                            // 使用相同的宽度计算逻辑
-                            int maxWidth = Math.min(chatPanel.getWidth(), content.getWidth()) - (MESSAGE_HORIZONTAL_MARGIN * 2);
-                            
-                            // 调整大小
-                            textArea.setSize(maxWidth, Short.MAX_VALUE);
-                            int preferredHeight = textArea.getPreferredSize().height;
-                            ((JPanel)bubble.getComponent(0)).setPreferredSize(
-                                new Dimension(maxWidth, preferredHeight + 10)
-                            );
-                        }
+                        adjustMessageSize((JBPanel<JBPanel<?>>) component, maxWidth);
                     }
                 }
-                
                 chatPanel.revalidate();
-                chatPanel.repaint();
             }
         });
     }
