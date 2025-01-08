@@ -28,6 +28,7 @@ public class DeepSeekService {
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
         String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
+
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
         }
