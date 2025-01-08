@@ -83,11 +83,13 @@ public class DeepSeekToolWindow {
             }
         });
 
-        JLabel clearHistoryLabel = createToolbarButton("🗑️", "清除历史记录");
+        JLabel clearHistoryLabel = createToolbarButton("🗑️", "Clear History");
         clearHistoryLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                int result = Messages.showYesNoDialog("确定要清除所有聊天记录吗？", "清除确认", Messages.getQuestionIcon());
+                int result = Messages
+                    .showYesNoDialog("Are you sure you want to clear all chat history?", "Clear Confirmation",
+                        Messages.getQuestionIcon());
                 if (result == Messages.YES) {
                     chatPanel.removeAll();
                     chatPanel.revalidate();
