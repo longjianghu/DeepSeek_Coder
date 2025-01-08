@@ -77,7 +77,7 @@ public class DeepSeekSettingsComponent {
         // 创建标签包装面板，使用 FlowLayout(LEFT) 实现顶部对齐
         JPanel labelWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         labelWrapper.setOpaque(false);
-        JBLabel roleDescLabel = new JBLabel("提示词:");
+        JBLabel roleDescLabel = new JBLabel("Prompt:");
         roleDescLabel.setPreferredSize(new Dimension(100, 20)); // 减小高度
         labelWrapper.add(roleDescLabel);
         

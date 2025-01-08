@@ -50,7 +50,7 @@ public class DeepSeekToolWindow {
         this.deepSeekService = new DeepSeekService();
 
         content = new JPanel(new BorderLayout());
-        
+
         // 使用更深的背景色
         Color backgroundColor = new Color(30, 30, 30); // 使用固定的深色背景
         content.setBackground(backgroundColor);
@@ -131,10 +131,9 @@ public class DeepSeekToolWindow {
         content.add(chatScrollPane, BorderLayout.CENTER);
 
         // 订阅设置变更事件
-        ApplicationManager.getApplication().getMessageBus().connect()
-            .subscribe(ApiKeyChangeNotifier.TOPIC, event -> {
-                SwingUtilities.invokeLater(this::checkApiKeyConfig);
-            });
+        ApplicationManager.getApplication().getMessageBus().connect().subscribe(ApiKeyChangeNotifier.TOPIC, event -> {
+            SwingUtilities.invokeLater(this::checkApiKeyConfig);
+        });
 
         addComponentListener(); // 添加大小变化监听
 
@@ -165,7 +164,7 @@ public class DeepSeekToolWindow {
 
     private void scrollToBottom() {
         SwingUtilities.invokeLater(() -> {
-            JScrollPane scrollPane = (JScrollPane) chatPanel.getParent().getParent();
+            JScrollPane scrollPane = (JScrollPane)chatPanel.getParent().getParent();
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
             vertical.setValue(vertical.getMaximum() - vertical.getVisibleAmount());
         });
@@ -174,7 +173,7 @@ public class DeepSeekToolWindow {
     private void sendMessage() {
         // 获取输入内容并进行前后空格过滤
         String message = inputArea.getText().replaceAll("^\\s+|\\s+$", "");
-        
+
         if (!message.isEmpty()) {
             // 禁用输入框
             inputArea.setEnabled(false);
@@ -201,32 +200,29 @@ public class DeepSeekToolWindow {
                     try {
                         StringBuilder fullResponse = new StringBuilder();
 
-                        deepSeekService.streamMessage(
-                            message,
-                            chunk -> SwingUtilities.invokeLater(() -> {
-                                fullResponse.append(chunk);
-                                String currentResponse = fullResponse.toString();
-                                aiBubble.putClientProperty("originalMessage", currentResponse);
+                        deepSeekService.streamMessage(message, chunk -> SwingUtilities.invokeLater(() -> {
+                            fullResponse.append(chunk);
+                            String currentResponse = fullResponse.toString();
+                            aiBubble.putClientProperty("originalMessage", currentResponse);
 
-                                // 更新消息内容
-                                JEditorPane textArea = (JEditorPane) aiBubble.getClientProperty("textArea");
-                                textArea.setText(MarkdownRenderer.renderMarkdown(currentResponse));
+                            // 更新消息内容
+                            JEditorPane textArea = (JEditorPane)aiBubble.getClientProperty("textArea");
+                            textArea.setText(MarkdownRenderer.renderMarkdown(currentResponse));
 
-                                // 调整大小，考虑侧边栏宽度
-                                int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
-                                adjustMessageSize(aiBubble, maxWidth);
+                            // 调整大小，考虑侧边栏宽度
+                            int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
+                            adjustMessageSize(aiBubble, maxWidth);
 
-                                // 重新布局
-                                aiBubble.revalidate();
-                                chatPanel.revalidate();
-                            }),
+                            // 重新布局
+                            aiBubble.revalidate();
+                            chatPanel.revalidate();
+                        }),
                             // 忽略 token 信息
                             () -> SwingUtilities.invokeLater(() -> {
                                 inputArea.setEnabled(true);
                                 inputArea.requestFocus();
                                 scrollToBottom();
-                            })
-                        );
+                            }));
                     } catch (Exception e) {
                         SwingUtilities.invokeLater(() -> {
                             chatPanel.remove(aiBubble);
@@ -241,7 +237,7 @@ public class DeepSeekToolWindow {
     }
 
     private void addMessageBubble(String message, boolean isUser) {
-        JBPanel<JBPanel<?>> bubble = (JBPanel<JBPanel<?>>) createMessageBubble(message, isUser);
+        JBPanel<JBPanel<?>> bubble = (JBPanel<JBPanel<?>>)createMessageBubble(message, isUser);
         chatPanel.add(bubble);
 
         // 检查是否超过历史记录限制
@@ -280,14 +276,10 @@ public class DeepSeekToolWindow {
         // 渲染消息内容
         if (isUser) {
             // 用户消息使用简单的 HTML 包装
-            String escapedMessage = message.replace("<", "&lt;")
-                                        .replace(">", "&gt;")
-                                        .replace("\n", "<br>");
-            String userContent = String.format(
-                "<body style='margin:0;padding:8px;" +
-                "background-color:#2B2B2B;border:1px solid #646464;" +
-                "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" +
-                "%s</body>", escapedMessage);
+            String escapedMessage = message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
+            String userContent = String
+                .format("<body style='margin:0;padding:8px;" + "background-color:#2B2B2B;border:1px solid #646464;"
+                    + "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" + "%s</body>", escapedMessage);
             textArea.setText(MarkdownRenderer.renderHtml(userContent));
         } else {
             // AI 消息使用 Markdown 渲染
@@ -306,35 +298,32 @@ public class DeepSeekToolWindow {
     }
 
     private void adjustMessageSize(JBPanel<JBPanel<?>> bubble, int maxWidth) {
-        if (maxWidth <= 0) return;
-        
-        JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
-        JBPanel<?> textPanel = (JBPanel<?>) bubble.getClientProperty("textPanel");
-        
+        if (maxWidth <= 0)
+            return;
+
+        JEditorPane textArea = (JEditorPane)bubble.getClientProperty("textArea");
+        JBPanel<?> textPanel = (JBPanel<?>)bubble.getClientProperty("textPanel");
+
         // 计算实际可用宽度，考虑边距和滚动条
-        int availableWidth = Math.min(maxWidth, chatPanel.getParent().getWidth() - 40);  // 使用滚动面板的宽度
-        
+        int availableWidth = Math.min(maxWidth, chatPanel.getParent().getWidth() - 40); // 使用滚动面板的宽度
+
         // 设置最大宽度并计算首选高度
         textArea.setSize(availableWidth, Short.MAX_VALUE);
         int preferredHeight = textArea.getPreferredSize().height;
-        
+
         // 设置面板大小，添加一些垂直内边距
         textPanel.setPreferredSize(new Dimension(availableWidth, preferredHeight + 10));
-        
+
         bubble.revalidate();
     }
 
     private void updateMessageContent(JBPanel<JBPanel<?>> bubble, String message, boolean isUser) {
-        JEditorPane textArea = (JEditorPane) bubble.getClientProperty("textArea");
+        JEditorPane textArea = (JEditorPane)bubble.getClientProperty("textArea");
         if (isUser) {
-            String escapedMessage = message.replace("<", "&lt;")
-                                        .replace(">", "&gt;")
-                                        .replace("\n", "<br>");
-            String userContent = String.format(
-                "<body style='margin:0;padding:8px;" +
-                "background-color:#2B2B2B;border:1px solid #646464;" +
-                "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" +
-                "%s</body>", escapedMessage);
+            String escapedMessage = message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
+            String userContent = String
+                .format("<body style='margin:0;padding:8px;" + "background-color:#2B2B2B;border:1px solid #646464;"
+                    + "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" + "%s</body>", escapedMessage);
             textArea.setText(MarkdownRenderer.renderHtml(userContent));
         } else {
             textArea.setText(MarkdownRenderer.renderMarkdown(message));
@@ -360,10 +349,10 @@ public class DeepSeekToolWindow {
             public void componentResized(ComponentEvent e) {
                 // 当窗口大小改变时，重新调整所有消息气泡的大小
                 int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
-                
+
                 for (Component component : chatPanel.getComponents()) {
                     if (component instanceof JBPanel) {
-                        adjustMessageSize((JBPanel<JBPanel<?>>) component, maxWidth);
+                        adjustMessageSize((JBPanel<JBPanel<?>>)component, maxWidth);
                     }
                 }
                 chatPanel.revalidate();
@@ -380,7 +369,7 @@ public class DeepSeekToolWindow {
             for (int i = 0; i < components.length; i++) {
                 if (components[i] instanceof JBPanel) {
                     JBPanel<?> bubble = (JBPanel<?>)components[i];
-                    String message = (String) bubble.getClientProperty("originalMessage");
+                    String message = (String)bubble.getClientProperty("originalMessage");
 
                     // 通过判断消息的位置来确定是否为用户消息
                     // 用户消息和 AI 回复总是成对出现，用户消息在偶数位置
@@ -413,7 +402,7 @@ public class DeepSeekToolWindow {
             String json = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
 
             if (json != null && !json.isEmpty()) {
-                Type listType = new TypeToken<ArrayList<ChatMessage>>(){}.getType();
+                Type listType = new TypeToken<ArrayList<ChatMessage>>() {}.getType();
                 List<ChatMessage> messages = gson.fromJson(json, listType);
 
                 if (messages != null && !messages.isEmpty()) {
@@ -541,7 +530,7 @@ public class DeepSeekToolWindow {
         JPanel borderPanel = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
+                Graphics2D g2 = (Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 // 使用更深的背景色
@@ -574,8 +563,21 @@ public class DeepSeekToolWindow {
         inputArea.setRows(3);
         inputArea.setOpaque(false);
 
+        // 创建选择列表前的提示标签
+        JLabel promptLabel = new JLabel("Context");
+        promptLabel.setForeground(new Color(153, 153, 153));
+        promptLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        promptLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
+
+        // 创建选择列表
+        String[] options = {"1", "2", "3", "4", "5"};
+        JComboBox<String> selectList = new JComboBox<>(options);
+        selectList.setForeground(new Color(153, 153, 153));
+        selectList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        selectList.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
+
         // 快捷键提示标签
-        JLabel hintLabel = new JLabel("按Enter提交，Shift+Enter换行");
+        JLabel hintLabel = new JLabel("Press Enter to submit, Shift Enter to complete the line");
         hintLabel.setForeground(new Color(153, 153, 153));
         hintLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         hintLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
@@ -583,7 +585,15 @@ public class DeepSeekToolWindow {
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
-        bottomPanel.add(hintLabel, BorderLayout.EAST);
+
+        // 创建一个包装面板，使用 FlowLayout(LEFT) 实现左对齐
+        JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        wrapperPanel.setOpaque(false);
+        wrapperPanel.add(promptLabel);
+        wrapperPanel.add(selectList);
+        wrapperPanel.add(hintLabel);
+
+        bottomPanel.add(wrapperPanel, BorderLayout.EAST);
 
         // 组装面板
         borderPanel.add(inputArea, BorderLayout.CENTER);
@@ -613,13 +623,13 @@ public class DeepSeekToolWindow {
     // 修改平滑滚动方法
     private void smoothScrollToBottom() {
         SwingUtilities.invokeLater(() -> {
-            JScrollPane scrollPane = (JScrollPane) chatPanel.getParent().getParent();
+            JScrollPane scrollPane = (JScrollPane)chatPanel.getParent().getParent();
             JScrollBar vertical = scrollPane.getVerticalScrollBar();
-            
+
             // 获取目标位置（最大滚动值）
             int targetValue = vertical.getMaximum() - vertical.getVisibleAmount();
             int currentValue = vertical.getValue();
-            
+
             // 如果已经在底部，不需要滚动
             if (currentValue >= targetValue) {
                 return;
@@ -628,13 +638,13 @@ public class DeepSeekToolWindow {
             // 创建平滑滚动动画
             Timer timer = new Timer(16, null); // 使用 16ms 的间隔（约60fps）
             final int[] lastValue = {currentValue}; // 记录上一次的值
-            
+
             timer.addActionListener(e -> {
                 if (!vertical.getValueIsAdjusting()) { // 只在用户没有手动滚动时执行
                     int newValue = lastValue[0];
                     int remainingDistance = targetValue - newValue;
                     int step = remainingDistance / 6; // 使用更平滑的步长
-                    
+
                     // 确保最小步长
                     if (Math.abs(step) < 1) {
                         step = remainingDistance > 0 ? 1 : -1;
@@ -643,9 +653,8 @@ public class DeepSeekToolWindow {
                     newValue += step;
 
                     // 检查是否到达目标
-                    if ((step > 0 && newValue >= targetValue) || 
-                        (step < 0 && newValue <= targetValue) ||
-                        Math.abs(remainingDistance) <= 1) {
+                    if ((step > 0 && newValue >= targetValue) || (step < 0 && newValue <= targetValue)
+                        || Math.abs(remainingDistance) <= 1) {
                         vertical.setValue(targetValue);
                         timer.stop();
                     } else {
@@ -660,7 +669,7 @@ public class DeepSeekToolWindow {
             for (MouseWheelListener listener : listeners) {
                 scrollPane.removeMouseWheelListener(listener);
             }
-            
+
             scrollPane.addMouseWheelListener(e -> {
                 if (timer.isRunning()) {
                     timer.stop(); // 如果用户滚动，停止自动滚动
@@ -674,4 +683,4 @@ public class DeepSeekToolWindow {
             timer.start();
         });
     }
-} 
+}
