@@ -21,6 +21,7 @@ public class DeepSeekSettingsComponent {
     private String originalApiKey;
     private String originalRoleDescription;
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
+    private static final String PROMPT = "com.sohocn.deepseek.prompt";
 
     public DeepSeekSettingsComponent() {
         // 初始化组件
@@ -137,11 +138,6 @@ public class DeepSeekSettingsComponent {
         return roleDescriptionArea.getText().trim();
     }
 
-    public void setApiKey(String apiKey) {
-        apiKeyField.setText(apiKey);
-        originalApiKey = apiKey;
-    }
-
     public boolean isModified() {
         return !getApiKey().equals(originalApiKey) || !getRoleDescription().equals(originalRoleDescription);
     }
@@ -151,6 +147,7 @@ public class DeepSeekSettingsComponent {
         originalRoleDescription = getRoleDescription();
 
         PropertiesComponent.getInstance().setValue(API_KEY, originalApiKey);
+        PropertiesComponent.getInstance().setValue(PROMPT, originalRoleDescription);
 
         DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
         settings.roleDescription = originalRoleDescription;

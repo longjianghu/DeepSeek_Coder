@@ -24,10 +24,12 @@ import com.intellij.ide.util.PropertiesComponent;
 public class DeepSeekService {
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
+    private static final String PROMPT = "com.sohocn.deepseek.prompt";
 
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
         String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
+        String prompt = PropertiesComponent.getInstance().getValue(PROMPT);
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
@@ -47,13 +49,12 @@ public class DeepSeekService {
             requestBody.put("stream", true); // 启用流式输出
 
             List<Map<String, String>> messages = new ArrayList<>();
-            messages.add(Map.of(
-                    "role", "system",
-                    "content",
-                    "You are a helpful assistant specialized in programming and software development. Your task is to assist users with questions related to coding, debugging, software design, algorithms, and other programming-related topics. If a user asks a question outside of these areas, politely inform them that you are only able to assist with programming-related queries."));
-            messages.add(Map.of(
-                    "role", "user",
-                    "content", message));
+
+            if (prompt != null && !prompt.trim().isEmpty()) {
+                messages.add(Map.of("role", "system", "content", prompt));
+            }
+
+            messages.add(Map.of("role", "user", "content", message));
             requestBody.put("messages", messages);
 
             // 转换为JSON
