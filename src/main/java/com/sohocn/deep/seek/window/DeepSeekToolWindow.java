@@ -75,7 +75,7 @@ public class DeepSeekToolWindow {
         rightPanel.setOpaque(false);
 
         // 设置按钮
-        JLabel settingsLabel = createToolbarButton("⚙️", "设置");
+        JLabel settingsLabel = createToolbarButton("⚙️", "Setting");
         settingsLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -319,28 +319,12 @@ public class DeepSeekToolWindow {
         bubble.revalidate();
     }
 
-    private void updateMessageContent(JBPanel<JBPanel<?>> bubble, String message, boolean isUser) {
-        JEditorPane textArea = (JEditorPane)bubble.getClientProperty("textArea");
-        if (isUser) {
-            String escapedMessage = message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
-            String userContent = String
-                .format("<body style='margin:0;padding:8px;" + "background-color:#2B2B2B;border:1px solid #646464;"
-                    + "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" + "%s</body>", escapedMessage);
-            textArea.setText(MarkdownRenderer.renderHtml(userContent));
-        } else {
-            textArea.setText(MarkdownRenderer.renderMarkdown(message));
-        }
-        bubble.putClientProperty("originalMessage", message);
-    }
-
     private void checkApiKeyConfig() {
         String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             inputArea.setEnabled(false);
-            inputArea.putClientProperty("StatusText", "请先配置 API KEY");
         } else {
             inputArea.setEnabled(true);
-            inputArea.putClientProperty("StatusText", null);
         }
     }
 
@@ -386,7 +370,7 @@ public class DeepSeekToolWindow {
             // 限制保存的消息数量
             int historyLimit = PropertiesComponent.getInstance().getInt(HISTORY_LIMIT, 10);
             if (messages.size() > historyLimit * 2) {
-                messages = messages.subList(messages.size() - historyLimit * 2, messages.size());
+                messages = messages.subList(messages.size() - 10, messages.size());
             }
 
             if (!messages.isEmpty()) {
@@ -412,8 +396,8 @@ public class DeepSeekToolWindow {
 
                     for (ChatMessage message : messages) {
                         // 创建消息气泡，传入正确的 isUser 参数
-                        JBPanel<JBPanel<?>> bubble = createMessageBubble(message.getMessage(), message.isUser());
-                        bubble.putClientProperty("originalMessage", message.getMessage());
+                        JBPanel<JBPanel<?>> bubble = createMessageBubble(message.getContent(), message.isUser());
+                        bubble.putClientProperty("originalMessage", message.getContent());
                         chatPanel.add(bubble);
                     }
 
@@ -434,25 +418,6 @@ public class DeepSeekToolWindow {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }
-    }
-
-    // 聊天消息数据类
-    private static class ChatMessage {
-        private final String message;
-        private final boolean user;
-
-        public ChatMessage(String message, boolean user) {
-            this.message = message;
-            this.user = user;
-        }
-
-        public String getMessage() {
-            return message;
-        }
-
-        public boolean isUser() {
-            return user;
         }
     }
 

@@ -3,6 +3,7 @@ package com.sohocn.deep.seek.service;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,14 +18,18 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
+import com.sohocn.deep.seek.window.ChatMessage;
 
 public class DeepSeekService {
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
     private static final String API_KEY = "com.sohocn.deepseek.apiKey";
     private static final String PROMPT = "com.sohocn.deepseek.prompt";
+    private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
 
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
@@ -52,6 +57,24 @@ public class DeepSeekService {
 
             if (prompt != null && !prompt.trim().isEmpty()) {
                 messages.add(Map.of("role", "system", "content", prompt));
+            }
+
+            // 获取历史记录
+            String chatHistoryJson = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
+
+            if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
+                Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
+                List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
+
+                // 获取最近的一条交互记录
+                if (!chatMessages.isEmpty()) {
+                    List<ChatMessage> lastTwoMessages =
+                        chatMessages.subList(chatMessages.size() - 2, chatMessages.size());
+
+                    for (ChatMessage lastTwoMessage : lastTwoMessages) {
+                        messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
+                    }
+                }
             }
 
             messages.add(Map.of("role", "user", "content", message));
