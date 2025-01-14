@@ -5,10 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 import org.apache.http.HttpEntity;
@@ -23,25 +20,21 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
+import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.window.ChatMessage;
 
 public class DeepSeekService {
-    private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
-    private static final String API_KEY = "com.sohocn.deepseek.apiKey";
-    private static final String PROMPT = "com.sohocn.deepseek.prompt";
-    private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
-
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
-        String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
-        String prompt = PropertiesComponent.getInstance().getValue(PROMPT);
+        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
+        String prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT);
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
         }
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(API_URL);
+            HttpPost httpPost = new HttpPost(AppConstant.API_URL);
 
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
@@ -60,16 +53,19 @@ public class DeepSeekService {
             }
 
             // 获取历史记录
-            String chatHistoryJson = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
+            String chatHistoryJson = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
+            String optionValue = PropertiesComponent.getInstance().getValue(AppConstant.OPTION_VALUE);
 
             if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
                 List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
 
+                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 1;
+
                 // 获取最近的一条交互记录
                 if (!chatMessages.isEmpty()) {
                     List<ChatMessage> lastTwoMessages =
-                        chatMessages.subList(chatMessages.size() - 2, chatMessages.size());
+                        chatMessages.subList(chatMessages.size() - limitNumber * 2, chatMessages.size());
 
                     for (ChatMessage lastTwoMessage : lastTwoMessages) {
                         messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));

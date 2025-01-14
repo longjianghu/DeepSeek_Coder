@@ -26,6 +26,7 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
+import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.service.DeepSeekService;
 import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
 import com.sohocn.deep.seek.utils.MarkdownRenderer;
@@ -33,10 +34,6 @@ import com.sohocn.deep.seek.utils.MarkdownRenderer;
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
 public class DeepSeekToolWindow {
-    private static final String API_KEY = "com.sohocn.deepseek.apiKey";
-    private static final String CHAT_HISTORY = "com.sohocn.deepseek.chatHistory";
-    private static final String HISTORY_LIMIT = "com.sohocn.deepseek.historyLimit";
-    // 消息气泡的总边距
     private static final int MESSAGE_HORIZONTAL_MARGIN = 20; // 左右边距各20像素
     private static final Gson gson = new GsonBuilder().create();
     private final JPanel content;
@@ -95,7 +92,7 @@ public class DeepSeekToolWindow {
                     chatPanel.revalidate();
                     chatPanel.repaint();
                     // 清除保存的历史记录
-                    PropertiesComponent.getInstance().unsetValue(CHAT_HISTORY);
+                    PropertiesComponent.getInstance().unsetValue(AppConstant.CHAT_HISTORY);
                 }
             }
 
@@ -243,7 +240,7 @@ public class DeepSeekToolWindow {
         chatPanel.add(bubble);
 
         // 检查是否超过历史记录限制
-        int historyLimit = PropertiesComponent.getInstance().getInt(HISTORY_LIMIT, 10);
+        int historyLimit = PropertiesComponent.getInstance().getInt(AppConstant.HISTORY_LIMIT, 10);
         int maxMessages = historyLimit * 2; // *2 因为每次对话包含用户消息和AI回复
 
         // 如果超过限制，从头开始删除多余的消息
@@ -320,7 +317,7 @@ public class DeepSeekToolWindow {
     }
 
     private void checkApiKeyConfig() {
-        String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
+        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             inputArea.setEnabled(false);
         } else {
@@ -368,14 +365,14 @@ public class DeepSeekToolWindow {
             }
 
             // 限制保存的消息数量
-            int historyLimit = PropertiesComponent.getInstance().getInt(HISTORY_LIMIT, 10);
+            int historyLimit = PropertiesComponent.getInstance().getInt(AppConstant.HISTORY_LIMIT, 10);
             if (messages.size() > historyLimit * 2) {
                 messages = messages.subList(messages.size() - 10, messages.size());
             }
 
             if (!messages.isEmpty()) {
                 String json = gson.toJson(messages);
-                PropertiesComponent.getInstance().setValue(CHAT_HISTORY, json);
+                PropertiesComponent.getInstance().setValue(AppConstant.CHAT_HISTORY, json);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -385,7 +382,7 @@ public class DeepSeekToolWindow {
     // 修改加载聊天记录方法
     private void loadChatHistory() {
         try {
-            String json = PropertiesComponent.getInstance().getValue(CHAT_HISTORY);
+            String json = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
 
             if (json != null && !json.isEmpty()) {
                 Type listType = new TypeToken<ArrayList<ChatMessage>>() {}.getType();
@@ -537,11 +534,16 @@ public class DeepSeekToolWindow {
         promptLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
         // 创建选择列表
-        String[] options = {"1", "2", "3", "4", "5"};
+        String[] options = {"0", "1", "2", "3", "4", "5"};
         JComboBox<String> selectList = new JComboBox<>(options);
         selectList.setForeground(new Color(153, 153, 153));
         selectList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         selectList.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
+
+        selectList
+            .addActionListener(e -> PropertiesComponent
+                .getInstance()
+                .setValue(AppConstant.OPTION_VALUE, selectList.getSelectedItem().toString()));
 
         // 快捷键提示标签
         JLabel hintLabel = new JLabel("Press Enter to submit, Shift Enter to complete the line");
