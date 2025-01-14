@@ -60,7 +60,7 @@ public class DeepSeekService {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
                 List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
 
-                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 1;
+                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
 
                 // 获取最近的一条交互记录
                 if (!chatMessages.isEmpty()) {
