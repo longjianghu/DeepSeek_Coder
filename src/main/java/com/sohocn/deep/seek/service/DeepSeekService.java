@@ -3,11 +3,9 @@ package com.sohocn.deep.seek.service;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 import org.apache.http.HttpEntity;
@@ -17,23 +15,26 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
+import com.sohocn.deep.seek.constant.AppConstant;
+import com.sohocn.deep.seek.window.ChatMessage;
 
 public class DeepSeekService {
-    private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
-    private static final String API_KEY = "com.sohocn.deepseek.apiKey";
-
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
-        String apiKey = PropertiesComponent.getInstance().getValue(API_KEY);
+        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
+        String prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT);
+
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
         }
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(API_URL);
+            HttpPost httpPost = new HttpPost(AppConstant.API_URL);
 
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
@@ -46,13 +47,33 @@ public class DeepSeekService {
             requestBody.put("stream", true); // 启用流式输出
 
             List<Map<String, String>> messages = new ArrayList<>();
-            messages.add(Map.of(
-                    "role", "system",
-                    "content",
-                    "You are a helpful assistant specialized in programming and software development. Your task is to assist users with questions related to coding, debugging, software design, algorithms, and other programming-related topics. If a user asks a question outside of these areas, politely inform them that you are only able to assist with programming-related queries."));
-            messages.add(Map.of(
-                    "role", "user",
-                    "content", message));
+
+            if (prompt != null && !prompt.trim().isEmpty()) {
+                messages.add(Map.of("role", "system", "content", prompt));
+            }
+
+            // 获取历史记录
+            String chatHistoryJson = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
+            String optionValue = PropertiesComponent.getInstance().getValue(AppConstant.OPTION_VALUE);
+
+            if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
+                Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
+                List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
+
+                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
+
+                // 获取最近的一条交互记录
+                if (!chatMessages.isEmpty()) {
+                    List<ChatMessage> lastTwoMessages =
+                        chatMessages.subList(chatMessages.size() - limitNumber * 2, chatMessages.size());
+
+                    for (ChatMessage lastTwoMessage : lastTwoMessages) {
+                        messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
+                    }
+                }
+            }
+
+            messages.add(Map.of("role", "user", "content", message));
             requestBody.put("messages", messages);
 
             // 转换为JSON
