@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'com.sohocn'
-version '1.0.2'
+version '1.0.3'
 
 repositories {
     mavenCentral()
@@ -18,7 +18,7 @@ dependencies {
 
 intellij {
     version = '2023.1.1'
-    type = 'IC'
+    type = 'IU'
     plugins = ['com.intellij.java']
 }
 
@@ -30,7 +30,7 @@ java {
 tasks {
     patchPluginXml {
         sinceBuild = '231'
-        untilBuild = '241.*'
+        untilBuild = '251.*'
     }
 
     signPlugin {
