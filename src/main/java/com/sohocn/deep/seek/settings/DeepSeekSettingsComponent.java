@@ -14,11 +14,12 @@ import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
+import com.intellij.openapi.ui.ComboBox;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;
     private final JBTextField apiKeyField;
-    private final JBTextField modelField;
+    private final ComboBox<String> modelField;
     private final JTextArea promptField;
     private String apiKey;
     private String prompt;
@@ -27,7 +28,7 @@ public class DeepSeekSettingsComponent {
     public DeepSeekSettingsComponent() {
         // 初始化组件
         apiKeyField = new JBTextField();
-        modelField = new JBTextField();
+        modelField = new ComboBox<>(new String[] {"deepseek-chat", "deepseek-reasoner"});
         promptField = new JTextArea();
 
         // API Key 设置
@@ -68,14 +69,14 @@ public class DeepSeekSettingsComponent {
         // 创建标签面板，确保左对齐
         JPanel apiKeyPanel = new JPanel(new BorderLayout());
         apiKeyPanel.setOpaque(false);
-        JBLabel apiKeyLabel = new JBLabel("API Key:");
+        JBLabel apiKeyLabel = new JBLabel("Api key:");
         apiKeyLabel.setPreferredSize(new Dimension(100, 30));
         apiKeyPanel.add(apiKeyLabel, BorderLayout.WEST);
         apiKeyPanel.add(apiKeyField, BorderLayout.CENTER);
 
         JPanel modelPanel = new JPanel(new BorderLayout());
         modelPanel.setOpaque(false);
-        JBLabel modelLabel = new JBLabel("Chat Model:");
+        JBLabel modelLabel = new JBLabel("Chat model:");
         modelLabel.setPreferredSize(new Dimension(100, 30));
         modelPanel.add(modelLabel, BorderLayout.WEST);
         modelPanel.add(modelField, BorderLayout.CENTER);
@@ -111,11 +112,11 @@ public class DeepSeekSettingsComponent {
         mainPanel.add(linkPanel, gbc);
 
         gbc.gridy = 2;
-        gbc.insets = JBUI.insets(10, 0, 0, 0); // 移除左边距，与 API Key 面板对齐
+        gbc.insets = JBUI.insetsTop(10); // 移除左边距，与 API Key 面板对齐
         mainPanel.add(modelPanel, gbc);
 
         gbc.gridy = 3;
-        gbc.insets = JBUI.insets(10, 0, 0, 0);
+        gbc.insets = JBUI.insetsTop(10);
         mainPanel.add(roleDescPanel, gbc);
 
         gbc.gridy = 6;
@@ -130,11 +131,11 @@ public class DeepSeekSettingsComponent {
     private void loadSettings() {
         DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
         apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY, "");
-        model = settings.model;  // 初始化 model 变量
-        prompt = settings.prompt;  // 初始化 prompt 变量
+        model = settings.model;
+        prompt = settings.prompt;
 
         apiKeyField.setText(apiKey);
-        modelField.setText(model);
+        modelField.setSelectedItem(model);
         promptField.setText(prompt);
     }
 
@@ -147,7 +148,7 @@ public class DeepSeekSettingsComponent {
     }
 
     public String getModel() {
-        return modelField.getText().trim();
+        return (String)modelField.getSelectedItem();
     }
 
     public String getPrompt() {
@@ -183,7 +184,7 @@ public class DeepSeekSettingsComponent {
 
     public void reset() {
         apiKeyField.setText(apiKey);
-        modelField.setText(model);
+        modelField.setSelectedItem(model);
         promptField.setText(prompt);
     }
 } 

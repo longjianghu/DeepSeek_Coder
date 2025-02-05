@@ -22,6 +22,8 @@ import com.intellij.openapi.project.ProjectManagerListener;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
+import com.intellij.ui.Gray;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
@@ -517,9 +519,8 @@ public class DeepSeekToolWindow {
         borderPanel.setBorder(JBUI.Borders.empty(1));
 
         // 输入框
-        inputArea.setBackground(new Color(43, 43, 43));
-        inputArea.setForeground(new Color(220, 220, 220));
-        inputArea.setCaretColor(Color.WHITE);
+        inputArea.setBackground(Gray._43);
+        inputArea.setCaretColor(JBColor.WHITE);
         inputArea.setBorder(JBUI.Borders.empty(8, 8, 24, 8));
         inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         inputArea.setLineWrap(true);
@@ -527,16 +528,41 @@ public class DeepSeekToolWindow {
         inputArea.setRows(3);
         inputArea.setOpaque(false);
 
+        String placeholder = "Press Enter to submit, Shift Enter to complete the line!";
+        inputArea.setText(placeholder);
+        inputArea.setForeground(JBColor.GRAY);
+
+        // 添加焦点事件监听器
+        inputArea.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (inputArea.getText().equals(placeholder)) {
+                    inputArea.setText("");
+                    inputArea.setForeground(Gray._220);
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (inputArea.getText().isEmpty()) {
+                    inputArea.setText(placeholder);
+                    inputArea.setForeground(JBColor.GRAY);
+                } else {
+                    inputArea.setForeground(Gray._220);
+                }
+            }
+        });
+
         // 创建选择列表前的提示标签
         JLabel promptLabel = new JLabel("Context");
-        promptLabel.setForeground(new Color(153, 153, 153));
+        promptLabel.setForeground(Gray._153);
         promptLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         promptLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
         // 创建选择列表
         String[] options = {"0", "1", "2", "3", "4", "5"};
         JComboBox<String> selectList = new JComboBox<>(options);
-        selectList.setForeground(new Color(153, 153, 153));
+        selectList.setForeground(Gray._153);
         selectList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         selectList.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
@@ -544,12 +570,6 @@ public class DeepSeekToolWindow {
             .addActionListener(e -> PropertiesComponent
                 .getInstance()
                 .setValue(AppConstant.OPTION_VALUE, selectList.getSelectedItem().toString()));
-
-        // 快捷键提示标签
-        JLabel hintLabel = new JLabel("Press Enter to submit, Shift Enter to complete the line");
-        hintLabel.setForeground(new Color(153, 153, 153));
-        hintLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        hintLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
@@ -560,7 +580,6 @@ public class DeepSeekToolWindow {
         wrapperPanel.setOpaque(false);
         wrapperPanel.add(promptLabel);
         wrapperPanel.add(selectList);
-        wrapperPanel.add(hintLabel);
 
         bottomPanel.add(wrapperPanel, BorderLayout.EAST);
 
