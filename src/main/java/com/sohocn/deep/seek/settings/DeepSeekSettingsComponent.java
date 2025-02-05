@@ -13,23 +13,26 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
+import com.sohocn.deep.seek.constant.AppConstant;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;
     private final JBTextField apiKeyField;
-    private final JTextArea roleDescriptionArea;
-    private String originalApiKey;
-    private String originalRoleDescription;
-    private static final String API_KEY = "com.sohocn.deepseek.apiKey";
-    private static final String PROMPT = "com.sohocn.deepseek.prompt";
+    private final JBTextField modelField;
+    private final JTextArea promptField;
+    private String apiKey;
+    private String prompt;
+    private String model;
 
     public DeepSeekSettingsComponent() {
         // 初始化组件
         apiKeyField = new JBTextField();
-        roleDescriptionArea = new JTextArea();
+        modelField = new JBTextField();
+        promptField = new JTextArea();
 
         // API Key 设置
         apiKeyField.setPreferredSize(new Dimension(500, 30));
+        modelField.setPreferredSize(new Dimension(500, 30));
 
         // 创建 API Key 链接标签
         JLabel apiKeyLink = new JLabel("<html><a href=''>Click here to apply for an API KEY</a></html>");
@@ -52,13 +55,13 @@ public class DeepSeekSettingsComponent {
         linkPanel.add(apiKeyLink);
 
         // 角色描述设置
-        roleDescriptionArea.setLineWrap(true);
-        roleDescriptionArea.setWrapStyleWord(true);
-        roleDescriptionArea.setRows(5);
-        roleDescriptionArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        roleDescriptionArea.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        promptField.setLineWrap(true);
+        promptField.setWrapStyleWord(true);
+        promptField.setRows(5);
+        promptField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        promptField.setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
-        JScrollPane scrollPane = new JScrollPane(roleDescriptionArea);
+        JScrollPane scrollPane = new JScrollPane(promptField);
         scrollPane.setPreferredSize(new Dimension(500, 150));
         scrollPane.setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
@@ -69,6 +72,13 @@ public class DeepSeekSettingsComponent {
         apiKeyLabel.setPreferredSize(new Dimension(100, 30));
         apiKeyPanel.add(apiKeyLabel, BorderLayout.WEST);
         apiKeyPanel.add(apiKeyField, BorderLayout.CENTER);
+
+        JPanel modelPanel = new JPanel(new BorderLayout());
+        modelPanel.setOpaque(false);
+        JBLabel modelLabel = new JBLabel("Chat Model:");
+        modelLabel.setPreferredSize(new Dimension(100, 30));
+        modelPanel.add(modelLabel, BorderLayout.WEST);
+        modelPanel.add(modelField, BorderLayout.CENTER);
 
         // 修改角色描述面板布局
         JPanel roleDescPanel = new JPanel(new BorderLayout(5, 0)); // 添加水平间距
@@ -101,14 +111,14 @@ public class DeepSeekSettingsComponent {
         mainPanel.add(linkPanel, gbc);
 
         gbc.gridy = 2;
-        gbc.insets = JBUI.insets(10, 0, 0, 0);
-        mainPanel.add(new JSeparator(), gbc);
+        gbc.insets = JBUI.insets(10, 0, 0, 0); // 移除左边距，与 API Key 面板对齐
+        mainPanel.add(modelPanel, gbc);
 
         gbc.gridy = 3;
         gbc.insets = JBUI.insets(10, 0, 0, 0);
         mainPanel.add(roleDescPanel, gbc);
 
-        gbc.gridy = 4;
+        gbc.gridy = 6;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
         mainPanel.add(new JPanel(), gbc); // 填充剩余空间
@@ -119,11 +129,13 @@ public class DeepSeekSettingsComponent {
 
     private void loadSettings() {
         DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
-        originalApiKey = PropertiesComponent.getInstance().getValue(API_KEY, "");
-        originalRoleDescription = settings.roleDescription;
+        apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY, "");
+        model = settings.model;  // 初始化 model 变量
+        prompt = settings.prompt;  // 初始化 prompt 变量
 
-        apiKeyField.setText(originalApiKey);
-        roleDescriptionArea.setText(originalRoleDescription);
+        apiKeyField.setText(apiKey);
+        modelField.setText(model);
+        promptField.setText(prompt);
     }
 
     public JPanel getPanel() {
@@ -134,32 +146,44 @@ public class DeepSeekSettingsComponent {
         return apiKeyField.getText().trim();
     }
 
-    public String getRoleDescription() {
-        return roleDescriptionArea.getText().trim();
+    public String getModel() {
+        return modelField.getText().trim();
+    }
+
+    public String getPrompt() {
+        return promptField.getText().trim();
     }
 
     public boolean isModified() {
-        return !getApiKey().equals(originalApiKey) || !getRoleDescription().equals(originalRoleDescription);
+        String currentApiKey = getApiKey();
+        String currentPrompt = getPrompt();
+        String currentModel = getModel();
+        
+        return !currentApiKey.equals(apiKey) || 
+               !currentPrompt.equals(prompt) || 
+               !currentModel.equals(model);
     }
 
     public void apply() {
-        originalApiKey = getApiKey();
-        originalRoleDescription = getRoleDescription();
+        apiKey = getApiKey();
+        model = getModel();
+        prompt = getPrompt();
 
-        PropertiesComponent.getInstance().setValue(API_KEY, originalApiKey);
-        PropertiesComponent.getInstance().setValue(PROMPT, originalRoleDescription);
-
+        PropertiesComponent.getInstance().setValue(AppConstant.API_KEY, apiKey);
+        
         DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
-        settings.roleDescription = originalRoleDescription;
+        settings.prompt = prompt;
+        settings.model = model;
 
         MessageBus messageBus = ApplicationManager.getApplication().getMessageBus();
         messageBus
             .syncPublisher(ApiKeyChangeNotifier.TOPIC)
-            .apiKeyChanged(new ApiKeyChangeEvent(originalApiKey));
+            .apiKeyChanged(new ApiKeyChangeEvent(apiKey));
     }
 
     public void reset() {
-        apiKeyField.setText(originalApiKey);
-        roleDescriptionArea.setText(originalRoleDescription);
+        apiKeyField.setText(apiKey);
+        modelField.setText(model);
+        promptField.setText(prompt);
     }
 } 

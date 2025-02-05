@@ -28,6 +28,7 @@ public class DeepSeekService {
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
         String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
         String prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT);
+        String model = PropertiesComponent.getInstance().getValue(AppConstant.MODEL);
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
@@ -43,7 +44,7 @@ public class DeepSeekService {
 
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-chat");
+            requestBody.put("model", model);
             requestBody.put("stream", true); // 启用流式输出
 
             List<Map<String, String>> messages = new ArrayList<>();
