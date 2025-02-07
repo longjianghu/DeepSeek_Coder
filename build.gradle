@@ -17,7 +17,7 @@ dependencies {
 }
 
 intellij {
-    version = '2024.2.1'
+    version = '2023.3.3'
     type = 'IU'
     plugins = ['com.intellij.java']
 }
@@ -30,7 +30,7 @@ java {
 tasks {
     patchPluginXml {
         sinceBuild = '231'
-        untilBuild = '251.*'
+        untilBuild = '243.*'
     }
 
     signPlugin {

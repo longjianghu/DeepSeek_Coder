@@ -518,7 +518,6 @@ public class DeepSeekToolWindow {
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
-        inputArea.setForeground(JBColor.WHITE);
 
         // 创建选择列表
         String[] options = {"0", "1", "2", "3", "4", "5"};
