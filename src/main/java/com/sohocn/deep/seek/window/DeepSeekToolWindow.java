@@ -5,7 +5,6 @@ import java.awt.event.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 import javax.swing.*;
@@ -296,12 +295,6 @@ public class DeepSeekToolWindow {
         return bubble;
     }
 
-    private void updateMessageContent(JBPanel<JBPanel<?>> bubble, String message) {
-        JTextPane textArea = (JTextPane)bubble.getClientProperty("textArea");
-        textArea.setText(message);
-        bubble.putClientProperty("originalMessage", message);
-    }
-
     private void adjustMessageSize(JBPanel<JBPanel<?>> bubble, int maxWidth) {
         if (maxWidth <= 0)
             return;
@@ -519,67 +512,52 @@ public class DeepSeekToolWindow {
 
         // 输入框
         inputArea.setBackground(Gray._43);
-        inputArea.setCaretColor(JBColor.WHITE);
-        inputArea.setForeground(Gray._220);
         inputArea.setBorder(JBUI.Borders.empty(8, 8, 24, 8));
         inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         inputArea.setLineWrap(true);
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
-
-        String placeholder = "Press Enter to submit, Shift Enter to complete the line!";
-        inputArea.setText(placeholder);
-        inputArea.setForeground(JBColor.GRAY);
-
-        // 添加焦点事件监听器
-        inputArea.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
-                if (inputArea.getText().equals(placeholder)) {
-                    inputArea.setText("");
-                    inputArea.setForeground(Gray._220);
-                }
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                if (inputArea.getText().isEmpty()) {
-                    inputArea.setText(placeholder);
-                    inputArea.setForeground(JBColor.GRAY);
-                } else {
-                    inputArea.setForeground(Gray._220);
-                }
-            }
-        });
-
-        // 创建选择列表前的提示标签
-        JLabel promptLabel = new JLabel("Context");
-        promptLabel.setForeground(Gray._153);
-        promptLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        promptLabel.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
+        inputArea.setForeground(JBColor.WHITE);
 
         // 创建选择列表
         String[] options = {"0", "1", "2", "3", "4", "5"};
         JComboBox<String> selectList = new ComboBox<>(options);
         selectList.setForeground(Gray._153);
         selectList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        selectList.setBorder(JBUI.Borders.empty(0, 8, 6, 8));
 
-        selectList
-            .addActionListener(e -> PropertiesComponent
-                .getInstance()
-                .setValue(AppConstant.OPTION_VALUE, Objects.requireNonNull(selectList.getSelectedItem()).toString()));
+        // 设置下拉框大小
+        Dimension comboBoxSize = new Dimension(60, 25); // 设置宽度和高度
+        selectList.setPreferredSize(comboBoxSize);
+        selectList.setMaximumSize(comboBoxSize);
+        selectList.setMinimumSize(comboBoxSize);
+
+        // 调整边距
+        selectList.setBorder(JBUI.Borders.empty(0, 2));
+
+        // 创建包装面板并设置间距
+        JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // 设置组件间距为5
+        wrapperPanel.setOpaque(false);
+
+        // 调整标签大小和样式
+        JLabel promptLabel = new JLabel("Context");
+        promptLabel.setForeground(Gray._153);
+        promptLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        promptLabel.setBorder(JBUI.Borders.empty(4, 0)); // 调整标签的上下边距
+
+        // 添加提交提示文本
+        JLabel submitHintLabel = new JLabel("Press Enter to submit");
+        submitHintLabel.setForeground(Gray._153);
+        submitHintLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        submitHintLabel.setBorder(JBUI.Borders.empty(4, 8, 4, 0)); // 左边增加间距
+
+        wrapperPanel.add(promptLabel);
+        wrapperPanel.add(selectList);
+        wrapperPanel.add(submitHintLabel);
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
-
-        // 创建一个包装面板，使用 FlowLayout(LEFT) 实现左对齐
-        JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        wrapperPanel.setOpaque(false);
-        wrapperPanel.add(promptLabel);
-        wrapperPanel.add(selectList);
 
         bottomPanel.add(wrapperPanel, BorderLayout.EAST);
 
