@@ -8,4 +8,5 @@ public interface AppConstant {
     String API_URL = "https://api.deepseek.com/v1/chat/completions";
     String PROMPT = "com.sohocn.deepseek.prompt";
     String MODEL = "com.sohocn.deepseek.model";
+    String ID = "com.sohocn.deep.seek.settings.DeepSeekSettingsConfigurable";
 }

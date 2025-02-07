@@ -46,8 +46,6 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
         <toolWindow id="DeepSeek Coder"
                     anchor="right"
                     factoryClass="com.sohocn.deep.seek.window.DeepSeekToolWindowFactory"
-                    icon="icons/deepseek.svg"
-                    darkIcon="icons/deepseek.svg"/>
-
+                    icon="/icons/deepseek.svg"/>
     </extensions>
 </idea-plugin>

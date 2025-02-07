@@ -48,14 +48,14 @@ public class DeepSeekToolWindow {
         this.deepSeekService = new DeepSeekService();
 
         content = new JPanel(new BorderLayout());
-        content.setBackground(getBackgroundColor());  // 使用统一背景色
+        content.setBackground(getBackgroundColor()); // 使用统一背景色
 
         // 聊天区域
         chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
-        chatPanel.setBackground(getBackgroundColor());  // 使用统一背景色
-        
+        chatPanel.setBackground(getBackgroundColor()); // 使用统一背景色
+
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
-        chatScrollPane.setBackground(getBackgroundColor());  // 使用统一背景色
+        chatScrollPane.setBackground(getBackgroundColor()); // 使用统一背景色
         chatScrollPane.setBorder(JBUI.Borders.empty());
         chatScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
@@ -64,7 +64,7 @@ public class DeepSeekToolWindow {
 
         // 顶部工具栏
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(getBackgroundColor());  // 使用统一背景色
+        topPanel.setBackground(getBackgroundColor()); // 使用统一背景色
         topPanel.setBorder(JBUI.Borders.empty(5, 10));
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0)); // 增加图标间距
@@ -75,7 +75,7 @@ public class DeepSeekToolWindow {
         settingsLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                ShowSettingsUtil.getInstance().showSettingsDialog(project, "DeepSeek");
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, AppConstant.ID);
             }
         });
 
@@ -458,8 +458,8 @@ public class DeepSeekToolWindow {
     private static class ModernScrollBarUI extends BasicScrollBarUI {
         @Override
         protected void configureScrollBarColors() {
-            thumbColor = new JBColor(Gray._180, Gray._88);  // Light/Dark 滚动条颜色
-            trackColor = new JBColor(Gray._250, Gray._30);  // 使用与背景相同的颜色
+            thumbColor = new JBColor(Gray._180, Gray._88); // Light/Dark 滚动条颜色
+            trackColor = new JBColor(Gray._250, Gray._30); // 使用与背景相同的颜色
         }
 
         @Override
@@ -669,14 +669,14 @@ public class DeepSeekToolWindow {
     }
 
     private Color getBackgroundColor() {
-        return new JBColor(Gray._250, Gray._30);  // Light/Dark 统一背景色
+        return new JBColor(Gray._250, Gray._30); // Light/Dark 统一背景色
     }
 
     private Color getInputBackgroundColor() {
-        return new JBColor(Gray._245, Gray._43);  // Light/Dark 输入框和消息背景
+        return new JBColor(Gray._245, Gray._43); // Light/Dark 输入框和消息背景
     }
 
     private Color getBorderColor() {
-        return new JBColor(Gray._200, Gray._100);  // Light/Dark 边框颜色
+        return new JBColor(Gray._200, Gray._100); // Light/Dark 边框颜色
     }
 }
