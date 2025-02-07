@@ -9,12 +9,12 @@ import javax.swing.*;
 
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
-import com.intellij.openapi.ui.ComboBox;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;
@@ -30,6 +30,15 @@ public class DeepSeekSettingsComponent {
         apiKeyField = new JBTextField();
         modelField = new ComboBox<>(new String[] {"deepseek-chat", "deepseek-reasoner"});
         promptField = new JTextArea();
+
+        // 初始化默认值
+        DeepSeekSettingsState defaultSettings = new DeepSeekSettingsState();
+        if (PropertiesComponent.getInstance().getValue(AppConstant.MODEL) == null) {
+            PropertiesComponent.getInstance().setValue(AppConstant.MODEL, defaultSettings.model);
+        }
+        if (PropertiesComponent.getInstance().getValue(AppConstant.PROMPT) == null) {
+            PropertiesComponent.getInstance().setValue(AppConstant.PROMPT, defaultSettings.prompt);
+        }
 
         // API Key 设置
         apiKeyField.setPreferredSize(new Dimension(500, 30));
@@ -91,7 +100,7 @@ public class DeepSeekSettingsComponent {
         JBLabel roleDescLabel = new JBLabel("Prompt:");
         roleDescLabel.setPreferredSize(new Dimension(100, 20)); // 减小高度
         labelWrapper.add(roleDescLabel);
-        
+
         roleDescPanel.add(labelWrapper, BorderLayout.WEST);
         roleDescPanel.add(scrollPane, BorderLayout.CENTER);
 
@@ -129,10 +138,12 @@ public class DeepSeekSettingsComponent {
     }
 
     private void loadSettings() {
-        DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
+        DeepSeekSettingsState deepSeekSettingsState = new DeepSeekSettingsState();
+
+        // 直接从 PropertiesComponent 获取所有配置
         apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY, "");
-        model = settings.model;
-        prompt = settings.prompt;
+        model = PropertiesComponent.getInstance().getValue(AppConstant.MODEL, deepSeekSettingsState.model); // 提供默认值
+        prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT, deepSeekSettingsState.prompt); // 提供默认值
 
         apiKeyField.setText(apiKey);
         modelField.setSelectedItem(model);
@@ -159,10 +170,8 @@ public class DeepSeekSettingsComponent {
         String currentApiKey = getApiKey();
         String currentPrompt = getPrompt();
         String currentModel = getModel();
-        
-        return !currentApiKey.equals(apiKey) || 
-               !currentPrompt.equals(prompt) || 
-               !currentModel.equals(model);
+
+        return !currentApiKey.equals(apiKey) || !currentPrompt.equals(prompt) || !currentModel.equals(model);
     }
 
     public void apply() {
@@ -170,16 +179,14 @@ public class DeepSeekSettingsComponent {
         model = getModel();
         prompt = getPrompt();
 
+        // 直接保存到 PropertiesComponent
         PropertiesComponent.getInstance().setValue(AppConstant.API_KEY, apiKey);
-        
-        DeepSeekSettingsState settings = ApplicationManager.getApplication().getService(DeepSeekSettingsState.class);
-        settings.prompt = prompt;
-        settings.model = model;
+        PropertiesComponent.getInstance().setValue(AppConstant.MODEL, model);
+        PropertiesComponent.getInstance().setValue(AppConstant.PROMPT, prompt);
 
+        // 发送通知
         MessageBus messageBus = ApplicationManager.getApplication().getMessageBus();
-        messageBus
-            .syncPublisher(ApiKeyChangeNotifier.TOPIC)
-            .apiKeyChanged(new ApiKeyChangeEvent(apiKey));
+        messageBus.syncPublisher(ApiKeyChangeNotifier.TOPIC).apiKeyChanged(new ApiKeyChangeEvent(apiKey));
     }
 
     public void reset() {
@@ -187,4 +194,4 @@ public class DeepSeekSettingsComponent {
         modelField.setSelectedItem(model);
         promptField.setText(prompt);
     }
-} 
+}

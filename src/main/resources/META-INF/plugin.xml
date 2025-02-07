@@ -19,7 +19,8 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
     <change-notes><![CDATA[
         <h3>1.0.3</h3>
         <ul>
-            <li>修复插件无法安装的BUG!</li>
+            <li>新增聊天模型配置选项，优化聊天输入框样式!</li>
+            <li>Added chat model configuration options and optimized the chat input box style.</li>
         </ul>
     ]]></change-notes>
     <!-- Product and plugin compatibility requirements.
@@ -31,9 +32,9 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- 确保先注册 Service -->
-        <applicationService 
-            serviceImplementation="com.sohocn.deep.seek.settings.DeepSeekSettingsState"/>
-            
+        <applicationService
+                serviceImplementation="com.sohocn.deep.seek.settings.DeepSeekSettingsState"/>
+
         <!-- 配置页面 -->
         <applicationConfigurable
                 parentId="tools"
@@ -47,5 +48,7 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
                     factoryClass="com.sohocn.deep.seek.window.DeepSeekToolWindowFactory"
                     icon="icons/deepseek.svg"
                     darkIcon="icons/deepseek.svg"/>
+
+        <postStartupActivity implementation="com.sohocn.deep.seek.startup.DeepSeekStartupActivity"/>
     </extensions>
 </idea-plugin>
