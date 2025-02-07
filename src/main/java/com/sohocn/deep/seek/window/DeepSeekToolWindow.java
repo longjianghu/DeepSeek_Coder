@@ -48,16 +48,14 @@ public class DeepSeekToolWindow {
         this.deepSeekService = new DeepSeekService();
 
         content = new JPanel(new BorderLayout());
-
-        // 使用更深的背景色
-        Color backgroundColor = Gray._30; // 使用固定的深色背景
-        content.setBackground(backgroundColor);
+        content.setBackground(getBackgroundColor());  // 使用统一背景色
 
         // 聊天区域
         chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
-        chatPanel.setBackground(backgroundColor);
+        chatPanel.setBackground(getBackgroundColor());  // 使用统一背景色
+        
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
-        chatScrollPane.setBackground(backgroundColor);
+        chatScrollPane.setBackground(getBackgroundColor());  // 使用统一背景色
         chatScrollPane.setBorder(JBUI.Borders.empty());
         chatScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
@@ -66,8 +64,8 @@ public class DeepSeekToolWindow {
 
         // 顶部工具栏
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(backgroundColor);
-        topPanel.setBorder(JBUI.Borders.empty(5, 10)); // 添加内边距
+        topPanel.setBackground(getBackgroundColor());  // 使用统一背景色
+        topPanel.setBorder(JBUI.Borders.empty(5, 10));
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0)); // 增加图标间距
         rightPanel.setOpaque(false);
@@ -269,14 +267,17 @@ public class DeepSeekToolWindow {
                 Graphics2D g2 = (Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // 使用与输入框相同的背景色
-                g2.setColor(getInputBackgroundColor());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                // 只为用户消息绘制背景和边框
+                if (isUser) {
+                    // 绘制背景
+                    g2.setColor(getInputBackgroundColor());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
 
-                // 使用相同的边框样式
-                g2.setColor(getBorderColor());
-                g2.setStroke(new BasicStroke(1f));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+                    // 绘制边框
+                    g2.setColor(getBorderColor());
+                    g2.setStroke(new BasicStroke(1f));
+                    g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+                }
 
                 g2.dispose();
             }
@@ -292,7 +293,7 @@ public class DeepSeekToolWindow {
         JTextPane textArea = new JTextPane();
         textArea.setContentType("text/plain");
         textArea.setEditable(false);
-        textArea.setBackground(getInputBackgroundColor());
+        textArea.setBackground(isUser ? getInputBackgroundColor() : getBackgroundColor());
         textArea.setForeground(JBColor.foreground());
         textArea.setBorder(JBUI.Borders.empty(8));
         textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
@@ -457,8 +458,8 @@ public class DeepSeekToolWindow {
     private static class ModernScrollBarUI extends BasicScrollBarUI {
         @Override
         protected void configureScrollBarColors() {
-            thumbColor = Gray._88;
-            trackColor = Gray._43;
+            thumbColor = new JBColor(Gray._180, Gray._88);  // Light/Dark 滚动条颜色
+            trackColor = new JBColor(Gray._250, Gray._30);  // 使用与背景相同的颜色
         }
 
         @Override
@@ -668,7 +669,7 @@ public class DeepSeekToolWindow {
     }
 
     private Color getBackgroundColor() {
-        return new JBColor(Gray._255, Gray._30);  // Light/Dark 背景色
+        return new JBColor(Gray._250, Gray._30);  // Light/Dark 统一背景色
     }
 
     private Color getInputBackgroundColor() {
