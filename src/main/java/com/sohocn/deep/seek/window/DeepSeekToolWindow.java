@@ -264,31 +264,26 @@ public class DeepSeekToolWindow {
         bubble.setBorder(JBUI.Borders.empty(10));
 
         // 创建消息文本区域
-        JEditorPane textArea = new JEditorPane();
-        textArea.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
+        JTextPane textArea = new JTextPane();
+        textArea.setContentType("text/plain"); // 使用纯文本模式
         textArea.setEditable(false);
-        textArea.setBackground(bubble.getBackground());
-        textArea.setBorder(null);
-        textArea.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        textArea.setBackground(isUser ? Gray._43 : Gray._30);
+        textArea.setBorder(JBUI.Borders.empty(8));
         textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        textArea.setForeground(Gray._220);
 
         // 创建一个面板来包装文本区域
         JBPanel<JBPanel<?>> textPanel = new JBPanel<>(new BorderLayout());
         textPanel.setBackground(bubble.getBackground());
         textPanel.add(textArea, BorderLayout.CENTER);
 
-        // 渲染消息内容
         if (isUser) {
-            // 用户消息使用简单的 HTML 包装
-            String escapedMessage = message.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
-            String userContent = String
-                .format("<body style='margin:0;padding:8px;" + "background-color:#2B2B2B;border:1px solid #646464;"
-                    + "border-radius:5px;color:#DCDCDC;white-space:pre-wrap;'>" + "%s</body>", escapedMessage);
-            textArea.setText(MarkdownRenderer.renderHtml(userContent));
-        } else {
-            // AI 消息使用 Markdown 渲染
-            textArea.setText(MarkdownRenderer.renderMarkdown(message));
+            // 用户消息添加边框
+            textPanel.setBorder(BorderFactory.createLineBorder(Gray._100, 1));
         }
+
+        // 设置消息内容
+        textArea.setText(message);
 
         // 存储原始消息和文本区域
         bubble.putClientProperty("originalMessage", message);
@@ -299,6 +294,12 @@ public class DeepSeekToolWindow {
         bubble.add(textPanel, BorderLayout.CENTER);
 
         return bubble;
+    }
+
+    private void updateMessageContent(JBPanel<JBPanel<?>> bubble, String message) {
+        JTextPane textArea = (JTextPane)bubble.getClientProperty("textArea");
+        textArea.setText(message);
+        bubble.putClientProperty("originalMessage", message);
     }
 
     private void adjustMessageSize(JBPanel<JBPanel<?>> bubble, int maxWidth) {
@@ -519,6 +520,7 @@ public class DeepSeekToolWindow {
         // 输入框
         inputArea.setBackground(Gray._43);
         inputArea.setCaretColor(JBColor.WHITE);
+        inputArea.setForeground(Gray._220);
         inputArea.setBorder(JBUI.Borders.empty(8, 8, 24, 8));
         inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         inputArea.setLineWrap(true);

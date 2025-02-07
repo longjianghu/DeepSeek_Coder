@@ -26,9 +26,11 @@ import com.sohocn.deep.seek.window.ChatMessage;
 public class DeepSeekService {
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
-        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
-        String prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT);
-        String model = PropertiesComponent.getInstance().getValue(AppConstant.MODEL);
+        PropertiesComponent instance = PropertiesComponent.getInstance();
+
+        String apiKey = instance.getValue(AppConstant.API_KEY);
+        String prompt = instance.getValue(AppConstant.PROMPT);
+        String model = instance.getValue(AppConstant.MODEL);
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
@@ -54,8 +56,8 @@ public class DeepSeekService {
             }
 
             // 获取历史记录
-            String chatHistoryJson = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
-            String optionValue = PropertiesComponent.getInstance().getValue(AppConstant.OPTION_VALUE);
+            String chatHistoryJson = instance.getValue(AppConstant.CHAT_HISTORY);
+            String optionValue = instance.getValue(AppConstant.OPTION_VALUE);
 
             if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
@@ -65,8 +67,10 @@ public class DeepSeekService {
 
                 // 获取最近的一条交互记录
                 if (!chatMessages.isEmpty()) {
-                    List<ChatMessage> lastTwoMessages =
-                        chatMessages.subList(chatMessages.size() - limitNumber * 2, chatMessages.size());
+                    int size = chatMessages.size();
+                    int limit = size - limitNumber * 2;
+
+                    List<ChatMessage> lastTwoMessages = limit > 0 ? chatMessages.subList(limit, size) : chatMessages;
 
                     for (ChatMessage lastTwoMessage : lastTwoMessages) {
                         messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
