@@ -44,6 +44,7 @@ public class DeepSeekToolWindow {
     private final JBPanel<JBPanel<?>> chatPanel;
     private final JBTextArea inputArea = new JBTextArea();
     private final DeepSeekService deepSeekService;
+    private final PropertiesComponent instance = PropertiesComponent.getInstance();
 
     public DeepSeekToolWindow(Project project) {
         this.deepSeekService = new DeepSeekService();
@@ -92,7 +93,7 @@ public class DeepSeekToolWindow {
                     chatPanel.revalidate();
                     chatPanel.repaint();
                     // 清除保存的历史记录
-                    PropertiesComponent.getInstance().unsetValue(AppConstant.CHAT_HISTORY);
+                    instance.unsetValue(AppConstant.CHAT_HISTORY);
                 }
             }
 
@@ -243,7 +244,7 @@ public class DeepSeekToolWindow {
         chatPanel.add(bubble);
 
         // 检查是否超过历史记录限制
-        int historyLimit = PropertiesComponent.getInstance().getInt(AppConstant.HISTORY_LIMIT, 10);
+        int historyLimit = instance.getInt(AppConstant.HISTORY_LIMIT, 10);
         int maxMessages = historyLimit * 2; // *2 因为每次对话包含用户消息和AI回复
 
         // 如果超过限制，从头开始删除多余的消息
@@ -336,7 +337,7 @@ public class DeepSeekToolWindow {
     }
 
     private void checkApiKeyConfig() {
-        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
+        String apiKey = instance.getValue(AppConstant.API_KEY);
         inputArea.setEnabled(apiKey != null && !apiKey.trim().isEmpty());
     }
 
@@ -379,14 +380,14 @@ public class DeepSeekToolWindow {
             }
 
             // 限制保存的消息数量
-            int historyLimit = PropertiesComponent.getInstance().getInt(AppConstant.HISTORY_LIMIT, 10);
+            int historyLimit = instance.getInt(AppConstant.HISTORY_LIMIT, 10);
             if (messages.size() > historyLimit * 2) {
                 messages = messages.subList(messages.size() - 10, messages.size());
             }
 
             if (!messages.isEmpty()) {
                 String json = gson.toJson(messages);
-                PropertiesComponent.getInstance().setValue(AppConstant.CHAT_HISTORY, json);
+                instance.setValue(AppConstant.CHAT_HISTORY, json);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -396,7 +397,7 @@ public class DeepSeekToolWindow {
     // 修改加载聊天记录方法
     private void loadChatHistory() {
         try {
-            String json = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
+            String json = instance.getValue(AppConstant.CHAT_HISTORY);
 
             if (json != null && !json.isEmpty()) {
                 Type listType = new TypeToken<ArrayList<ChatMessage>>() {}.getType();

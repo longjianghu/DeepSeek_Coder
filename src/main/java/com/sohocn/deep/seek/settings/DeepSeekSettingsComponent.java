@@ -12,6 +12,7 @@ import javax.swing.*;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
@@ -23,6 +24,9 @@ public class DeepSeekSettingsComponent {
     private final JBTextField apiKeyField;
     private final ComboBox<String> modelField;
     private final JTextArea promptField;
+    private final PropertiesComponent instance = PropertiesComponent.getInstance();
+    private final DeepSeekSettingsState deepSeekSettingsState = new DeepSeekSettingsState();
+
     private String apiKey;
     private String prompt;
     private String model;
@@ -50,20 +54,17 @@ public class DeepSeekSettingsComponent {
         });
 
         // 初始化默认值
-        PropertiesComponent instance = PropertiesComponent.getInstance();
-        DeepSeekSettingsState defaultSettings = new DeepSeekSettingsState();
-
         modelField.addActionListener(e -> {
             String selectedKey = (String)modelField.getSelectedItem();
             instance.setValue(AppConstant.MODEL, selectedKey);
         });
 
         if (instance.getValue(AppConstant.MODEL) == null) {
-            instance.setValue(AppConstant.MODEL, defaultSettings.model);
+            instance.setValue(AppConstant.MODEL, deepSeekSettingsState.model);
         }
 
         if (instance.getValue(AppConstant.PROMPT) == null) {
-            instance.setValue(AppConstant.PROMPT, defaultSettings.prompt);
+            instance.setValue(AppConstant.PROMPT, deepSeekSettingsState.prompt);
         }
 
         // API Key 设置
@@ -72,7 +73,7 @@ public class DeepSeekSettingsComponent {
 
         // 创建 API Key 链接标签
         JLabel apiKeyLink = new JLabel("<html><a href=''>Click here to apply for an API KEY</a></html>");
-        apiKeyLink.setForeground(new Color(87, 157, 246));
+        apiKeyLink.setForeground(new JBColor(new Color(87, 157, 246), new Color(87, 157, 246)));
         apiKeyLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
         apiKeyLink.addMouseListener(new MouseAdapter() {
             @Override
@@ -164,12 +165,10 @@ public class DeepSeekSettingsComponent {
     }
 
     private void loadSettings() {
-        DeepSeekSettingsState deepSeekSettingsState = new DeepSeekSettingsState();
-
         // 直接从 PropertiesComponent 获取所有配置
-        apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY, "");
-        model = PropertiesComponent.getInstance().getValue(AppConstant.MODEL, deepSeekSettingsState.model); // 提供默认值
-        prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT, deepSeekSettingsState.prompt); // 提供默认值
+        apiKey = instance.getValue(AppConstant.API_KEY, "");
+        model = instance.getValue(AppConstant.MODEL, deepSeekSettingsState.model); // 提供默认值
+        prompt = instance.getValue(AppConstant.PROMPT, deepSeekSettingsState.prompt); // 提供默认值
 
         apiKeyField.setText(apiKey);
         modelField.setSelectedItem(model);
@@ -206,9 +205,9 @@ public class DeepSeekSettingsComponent {
         prompt = getPrompt();
 
         // 直接保存到 PropertiesComponent
-        PropertiesComponent.getInstance().setValue(AppConstant.API_KEY, apiKey);
-        PropertiesComponent.getInstance().setValue(AppConstant.MODEL, model);
-        PropertiesComponent.getInstance().setValue(AppConstant.PROMPT, prompt);
+        instance.setValue(AppConstant.API_KEY, apiKey);
+        instance.setValue(AppConstant.MODEL, model);
+        instance.setValue(AppConstant.PROMPT, prompt);
 
         // 发送通知
         MessageBus messageBus = ApplicationManager.getApplication().getMessageBus();
