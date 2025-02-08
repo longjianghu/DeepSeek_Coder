@@ -4,7 +4,7 @@ import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 
-public class MarkdownRenderer {
+public class MarkdownUtil {
     private static final Parser parser;
     private static final HtmlRenderer renderer;
     private static final String CSS_STYLES = 

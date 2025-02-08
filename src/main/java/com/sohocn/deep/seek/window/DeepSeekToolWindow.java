@@ -32,7 +32,7 @@ import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.service.DeepSeekService;
 import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
-import com.sohocn.deep.seek.utils.MarkdownRenderer;
+import com.sohocn.deep.seek.utils.MarkdownUtil;
 import com.sohocn.deep.seek.utils.StyleUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
@@ -209,7 +209,7 @@ public class DeepSeekToolWindow {
 
                             // 更新消息内容
                             JEditorPane textArea = (JEditorPane)aiBubble.getClientProperty("textArea");
-                            textArea.setText(MarkdownRenderer.renderMarkdown(currentResponse));
+                            textArea.setText(MarkdownUtil.renderMarkdown(currentResponse));
 
                             // 调整大小，考虑侧边栏宽度
                             int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
