@@ -4,6 +4,8 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.*;
 
@@ -26,18 +28,42 @@ public class DeepSeekSettingsComponent {
     private String model;
 
     public DeepSeekSettingsComponent() {
+        Map<String, String> options = new HashMap<>();
+        options.put("deepseek-chat", "DeepSeek-V3");
+        options.put("deepseek-reasoner", "DeepSeek-R1");
+
         // 初始化组件
         apiKeyField = new JBTextField();
-        modelField = new ComboBox<>(new String[] {"deepseek-chat", "deepseek-reasoner"});
+        modelField = new ComboBox<>(options.keySet().toArray(new String[0]));
         promptField = new JTextArea();
 
+        modelField.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+                boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value != null) {
+                    setText(options.get(value));
+                }
+                return this;
+            }
+        });
+
         // 初始化默认值
+        PropertiesComponent instance = PropertiesComponent.getInstance();
         DeepSeekSettingsState defaultSettings = new DeepSeekSettingsState();
-        if (PropertiesComponent.getInstance().getValue(AppConstant.MODEL) == null) {
-            PropertiesComponent.getInstance().setValue(AppConstant.MODEL, defaultSettings.model);
+
+        modelField.addActionListener(e -> {
+            String selectedKey = (String)modelField.getSelectedItem();
+            instance.setValue(AppConstant.MODEL, selectedKey);
+        });
+
+        if (instance.getValue(AppConstant.MODEL) == null) {
+            instance.setValue(AppConstant.MODEL, defaultSettings.model);
         }
-        if (PropertiesComponent.getInstance().getValue(AppConstant.PROMPT) == null) {
-            PropertiesComponent.getInstance().setValue(AppConstant.PROMPT, defaultSettings.prompt);
+
+        if (instance.getValue(AppConstant.PROMPT) == null) {
+            instance.setValue(AppConstant.PROMPT, defaultSettings.prompt);
         }
 
         // API Key 设置
@@ -52,7 +78,7 @@ public class DeepSeekSettingsComponent {
             @Override
             public void mouseClicked(MouseEvent e) {
                 try {
-                    Desktop.getDesktop().browse(new URI("https://www.deepseek.com?from=DeepSeekCoder"));
+                    Desktop.getDesktop().browse(new URI(AppConstant.APPLY_URL));
                 } catch (Exception ex) {
                     // 处理异常
                 }

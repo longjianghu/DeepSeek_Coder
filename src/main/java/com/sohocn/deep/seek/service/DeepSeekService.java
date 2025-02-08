@@ -47,7 +47,8 @@ public class DeepSeekService {
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", model);
-            requestBody.put("stream", true); // 启用流式输出
+            requestBody.put("temperature", 0.0);
+            requestBody.put("stream", true);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
@@ -94,6 +95,7 @@ public class DeepSeekService {
                 }
 
                 HttpEntity entity = response.getEntity();
+
                 if (entity == null) {
                     throw new IOException("Empty response from API");
                 }
@@ -122,10 +124,14 @@ public class DeepSeekService {
                                     .getAsJsonObject()
                                     .getAsJsonObject("delta");
 
-                                // 检查是否有 content 字段
+                                // 检查是否有 reasoning_content 字段
+                                if (delta.has("reasoning_content")) {
+                                    String content = delta.get("reasoning_content").getAsString();
+                                    onChunk.accept(content);
+                                }
+
                                 if (delta.has("content")) {
                                     String content = delta.get("content").getAsString();
-                                    // 直接传递原始内容，由显示层处理渲染
                                     onChunk.accept(content);
                                 }
                             } catch (Exception e) {
