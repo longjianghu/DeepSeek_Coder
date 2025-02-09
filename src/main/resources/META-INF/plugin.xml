@@ -33,10 +33,6 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- 确保先注册 Service -->
-        <applicationService
-                serviceImplementation="com.sohocn.deep.seek.settings.DeepSeekSettingsState"/>
-
         <!-- 配置页面 -->
         <applicationConfigurable
                 parentId="tools"

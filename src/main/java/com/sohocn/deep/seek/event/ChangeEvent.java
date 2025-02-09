@@ -1,9 +1,9 @@
-package com.sohocn.deep.seek.settings;
+package com.sohocn.deep.seek.event;
 
-public class ApiKeyChangeEvent {
+public class ChangeEvent {
     private final String apiKey;
 
-    public ApiKeyChangeEvent(String apiKey) {
+    public ChangeEvent(String apiKey) {
         this.apiKey = apiKey;
     }
 

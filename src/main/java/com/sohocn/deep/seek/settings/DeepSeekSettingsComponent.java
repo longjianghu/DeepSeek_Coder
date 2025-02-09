@@ -18,6 +18,8 @@ import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
+import com.sohocn.deep.seek.event.ChangeEvent;
+import com.sohocn.deep.seek.event.ChangeNotifier;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;
@@ -25,7 +27,6 @@ public class DeepSeekSettingsComponent {
     private final ComboBox<String> modelField;
     private final JTextArea promptField;
     private final PropertiesComponent instance = PropertiesComponent.getInstance();
-    private final DeepSeekSettingsState deepSeekSettingsState = new DeepSeekSettingsState();
 
     private String apiKey;
     private String prompt;
@@ -60,11 +61,11 @@ public class DeepSeekSettingsComponent {
         });
 
         if (instance.getValue(AppConstant.MODEL) == null) {
-            instance.setValue(AppConstant.MODEL, deepSeekSettingsState.model);
+            instance.setValue(AppConstant.MODEL, AppConstant.DEFAULT_MODEL);
         }
 
         if (instance.getValue(AppConstant.PROMPT) == null) {
-            instance.setValue(AppConstant.PROMPT, deepSeekSettingsState.prompt);
+            instance.setValue(AppConstant.PROMPT, AppConstant.DEFAULT_PROMPT);
         }
 
         // API Key 设置
@@ -167,8 +168,8 @@ public class DeepSeekSettingsComponent {
     private void loadSettings() {
         // 直接从 PropertiesComponent 获取所有配置
         apiKey = instance.getValue(AppConstant.API_KEY, "");
-        model = instance.getValue(AppConstant.MODEL, deepSeekSettingsState.model); // 提供默认值
-        prompt = instance.getValue(AppConstant.PROMPT, deepSeekSettingsState.prompt); // 提供默认值
+        model = instance.getValue(AppConstant.MODEL, AppConstant.DEFAULT_MODEL); // 提供默认值
+        prompt = instance.getValue(AppConstant.PROMPT, AppConstant.DEFAULT_PROMPT); // 提供默认值
 
         apiKeyField.setText(apiKey);
         modelField.setSelectedItem(model);
@@ -211,7 +212,7 @@ public class DeepSeekSettingsComponent {
 
         // 发送通知
         MessageBus messageBus = ApplicationManager.getApplication().getMessageBus();
-        messageBus.syncPublisher(ApiKeyChangeNotifier.TOPIC).apiKeyChanged(new ApiKeyChangeEvent(apiKey));
+        messageBus.syncPublisher(ChangeNotifier.TOPIC).changed(new ChangeEvent(apiKey));
     }
 
     public void reset() {

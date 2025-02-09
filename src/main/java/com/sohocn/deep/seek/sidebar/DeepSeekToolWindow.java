@@ -30,10 +30,10 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
+import com.sohocn.deep.seek.event.ChangeNotifier;
 import com.sohocn.deep.seek.service.DeepSeekService;
-import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
+import com.sohocn.deep.seek.util.LayoutUtil;
 import com.sohocn.deep.seek.util.MarkdownUtil;
-import com.sohocn.deep.seek.util.StyleUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
@@ -50,14 +50,14 @@ public class DeepSeekToolWindow {
         this.deepSeekService = new DeepSeekService();
 
         content = new JPanel(new BorderLayout());
-        content.setBackground(StyleUtil.backgroundColor()); // 使用统一背景色
+        content.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
 
         // 聊天区域
         chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
-        chatPanel.setBackground(StyleUtil.backgroundColor()); // 使用统一背景色
+        chatPanel.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
 
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
-        chatScrollPane.setBackground(StyleUtil.backgroundColor()); // 使用统一背景色
+        chatScrollPane.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
         chatScrollPane.setBorder(JBUI.Borders.empty());
         chatScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
@@ -66,7 +66,7 @@ public class DeepSeekToolWindow {
 
         // 顶部工具栏
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(StyleUtil.backgroundColor()); // 使用统一背景色
+        topPanel.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
         topPanel.setBorder(JBUI.Borders.empty(5, 10));
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0)); // 增加图标间距
@@ -125,7 +125,7 @@ public class DeepSeekToolWindow {
 
         // 修改输入框的提示文本
         inputArea.putClientProperty("StatusVisibleFunction", (Supplier<Boolean>)() -> true);
-        checkApiKeyConfig(); // 这个方法会设置适当的提示文本
+        restConfigItem(); // 这个方法会设置适当的提示文本
 
         content.add(topPanel, BorderLayout.NORTH);
         content.add(chatScrollPane, BorderLayout.CENTER);
@@ -135,8 +135,7 @@ public class DeepSeekToolWindow {
             .getApplication()
             .getMessageBus()
             .connect()
-            .subscribe(ApiKeyChangeNotifier.TOPIC,
-                (ApiKeyChangeNotifier)event -> SwingUtilities.invokeLater(this::checkApiKeyConfig));
+            .subscribe(ChangeNotifier.TOPIC, (ChangeNotifier)event -> SwingUtilities.invokeLater(this::restConfigItem));
 
         addComponentListener(); // 添加大小变化监听
 
@@ -151,7 +150,7 @@ public class DeepSeekToolWindow {
         // 确保在所有组件初始化完成后加载历史记录
         ApplicationManager.getApplication().invokeLater(() -> {
             loadChatHistory();
-            checkApiKeyConfig();
+            restConfigItem();
         });
 
         // 添加窗口激活监听器
@@ -259,7 +258,7 @@ public class DeepSeekToolWindow {
 
     private JBPanel<JBPanel<?>> createMessageBubble(String message, boolean isUser) {
         JBPanel<JBPanel<?>> bubble = new JBPanel<>(new BorderLayout());
-        bubble.setBackground(StyleUtil.backgroundColor());
+        bubble.setBackground(LayoutUtil.backgroundColor());
         bubble.setBorder(JBUI.Borders.empty(10));
 
         // 使用 JBPanel 而不是 JPanel
@@ -272,11 +271,11 @@ public class DeepSeekToolWindow {
                 // 只为用户消息绘制背景和边框
                 if (isUser) {
                     // 绘制背景
-                    g2.setColor(StyleUtil.inputBackgroundColor());
+                    g2.setColor(LayoutUtil.inputBackgroundColor());
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
 
                     // 绘制边框
-                    g2.setColor(StyleUtil.borderColor());
+                    g2.setColor(LayoutUtil.borderColor());
                     g2.setStroke(new BasicStroke(1f));
                     g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
                 }
@@ -295,7 +294,7 @@ public class DeepSeekToolWindow {
         JTextPane textArea = new JTextPane();
         textArea.setContentType("text/plain");
         textArea.setEditable(false);
-        textArea.setBackground(isUser ? StyleUtil.inputBackgroundColor() : StyleUtil.backgroundColor());
+        textArea.setBackground(isUser ? LayoutUtil.inputBackgroundColor() : LayoutUtil.backgroundColor());
         textArea.setForeground(JBColor.foreground());
         textArea.setBorder(JBUI.Borders.empty(8));
         textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
@@ -336,9 +335,13 @@ public class DeepSeekToolWindow {
         bubble.revalidate();
     }
 
-    private void checkApiKeyConfig() {
+    private void restConfigItem() {
         String apiKey = instance.getValue(AppConstant.API_KEY);
-        inputArea.setEnabled(apiKey != null && !apiKey.trim().isEmpty());
+
+        boolean hasKey = apiKey != null && !apiKey.trim().isEmpty();
+
+        inputArea.setText(hasKey ? "" : AppConstant.NO_API_KEY);
+        inputArea.setEnabled(hasKey);
     }
 
     // 添加组件大小变化监听
@@ -502,7 +505,7 @@ public class DeepSeekToolWindow {
     private void initializeInputArea() {
         // 输入区域面板
         JPanel inputPanel = new JPanel(new BorderLayout());
-        inputPanel.setBackground(StyleUtil.backgroundColor());
+        inputPanel.setBackground(LayoutUtil.backgroundColor());
         inputPanel.setBorder(JBUI.Borders.empty(10));
 
         // 创建一个带边框的面板
@@ -513,10 +516,10 @@ public class DeepSeekToolWindow {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 // 使用主题颜色
-                g2.setColor(StyleUtil.inputBackgroundColor());
+                g2.setColor(LayoutUtil.inputBackgroundColor());
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
 
-                g2.setColor(StyleUtil.borderColor());
+                g2.setColor(LayoutUtil.borderColor());
                 g2.setStroke(new BasicStroke(1f));
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
 
@@ -531,7 +534,7 @@ public class DeepSeekToolWindow {
         borderPanel.setBorder(JBUI.Borders.empty(1));
 
         // 输入框
-        inputArea.setBackground(StyleUtil.inputBackgroundColor());
+        inputArea.setBackground(LayoutUtil.inputBackgroundColor());
         inputArea.setForeground(JBColor.foreground());
         inputArea.setBorder(JBUI.Borders.empty(8, 8, 24, 8));
         inputArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
@@ -539,6 +542,7 @@ public class DeepSeekToolWindow {
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
+        inputArea.setText(AppConstant.NO_API_KEY);
 
         // 创建选择列表
         String[] options = {"0", "1", "2", "3", "4", "5"};
@@ -559,21 +563,9 @@ public class DeepSeekToolWindow {
         JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // 设置组件间距为5
         wrapperPanel.setOpaque(false);
 
-        // 调整标签大小和样式
-        JLabel promptLabel = new JLabel("Context");
-        promptLabel.setForeground(JBColor.GRAY);
-        promptLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        promptLabel.setBorder(JBUI.Borders.empty(4, 0));
-
-        // 添加提交提示文本
-        JLabel submitHintLabel = new JLabel("Press Enter to submit");
-        submitHintLabel.setForeground(JBColor.GRAY);
-        submitHintLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-        submitHintLabel.setBorder(JBUI.Borders.empty(4, 8, 4, 0));
-
-        wrapperPanel.add(promptLabel);
+        wrapperPanel.add(LayoutUtil.JLabel("Context"));
         wrapperPanel.add(selectList);
-        wrapperPanel.add(submitHintLabel);
+        wrapperPanel.add(LayoutUtil.JLabel("Press Enter to submit"));
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
