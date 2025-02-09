@@ -14,12 +14,14 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.event.ChangeEvent;
 import com.sohocn.deep.seek.event.ChangeNotifier;
+import com.sohocn.deep.seek.util.LayoutUtil;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;
@@ -97,11 +99,11 @@ public class DeepSeekSettingsComponent {
         promptField.setWrapStyleWord(true);
         promptField.setRows(5);
         promptField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        promptField.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        promptField.setBorder(BorderFactory.createLineBorder(LayoutUtil.borderColor()));
 
-        JScrollPane scrollPane = new JScrollPane(promptField);
+        JScrollPane scrollPane = new JBScrollPane(promptField);
         scrollPane.setPreferredSize(new Dimension(500, 150));
-        scrollPane.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        scrollPane.setBorder(BorderFactory.createLineBorder(LayoutUtil.borderColor()));
 
         // 创建标签面板，确保左对齐
         JPanel apiKeyPanel = new JPanel(new BorderLayout());

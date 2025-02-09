@@ -19,7 +19,6 @@ import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectManagerListener;
-import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
@@ -340,7 +339,7 @@ public class DeepSeekToolWindow {
 
         boolean hasKey = apiKey != null && !apiKey.trim().isEmpty();
 
-        inputArea.setText(hasKey ? "" : AppConstant.NO_API_KEY);
+        inputArea.setText(hasKey ? "" : AppConstant.NO_API_KEY_PROMPT);
         inputArea.setEnabled(hasKey);
     }
 
@@ -542,29 +541,14 @@ public class DeepSeekToolWindow {
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
-        inputArea.setText(AppConstant.NO_API_KEY);
-
-        // 创建选择列表
-        String[] options = {"0", "1", "2", "3", "4", "5"};
-        JComboBox<String> selectList = new ComboBox<>(options);
-        selectList.setForeground(JBColor.GRAY);
-        selectList.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
-
-        // 设置下拉框大小
-        Dimension comboBoxSize = new Dimension(60, 25); // 设置宽度和高度
-        selectList.setPreferredSize(comboBoxSize);
-        selectList.setMaximumSize(comboBoxSize);
-        selectList.setMinimumSize(comboBoxSize);
-
-        // 调整边距
-        selectList.setBorder(JBUI.Borders.empty(0, 2));
+        inputArea.setText(AppConstant.NO_API_KEY_PROMPT);
 
         // 创建包装面板并设置间距
         JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // 设置组件间距为5
         wrapperPanel.setOpaque(false);
 
         wrapperPanel.add(LayoutUtil.JLabel("Context"));
-        wrapperPanel.add(selectList);
+        wrapperPanel.add(LayoutUtil.contextSelect());
         wrapperPanel.add(LayoutUtil.JLabel("Press Enter to submit"));
 
         // 创建底部面板
