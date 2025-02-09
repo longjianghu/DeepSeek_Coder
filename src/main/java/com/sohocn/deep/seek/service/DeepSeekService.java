@@ -21,7 +21,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.sohocn.deep.seek.constant.AppConstant;
-import com.sohocn.deep.seek.window.ChatMessage;
+import com.sohocn.deep.seek.sidebar.ChatMessage;
 
 public class DeepSeekService {
     // 修改方法签名，添加 token 使用回调

@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.utils;
+package com.sohocn.deep.seek.util;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;

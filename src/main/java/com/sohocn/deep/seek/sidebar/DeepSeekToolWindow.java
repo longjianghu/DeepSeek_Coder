@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.window;
+package com.sohocn.deep.seek.sidebar;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -32,8 +32,8 @@ import com.intellij.util.ui.JBUI;
 import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.service.DeepSeekService;
 import com.sohocn.deep.seek.settings.ApiKeyChangeNotifier;
-import com.sohocn.deep.seek.utils.MarkdownUtil;
-import com.sohocn.deep.seek.utils.StyleUtil;
+import com.sohocn.deep.seek.util.MarkdownUtil;
+import com.sohocn.deep.seek.util.StyleUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 

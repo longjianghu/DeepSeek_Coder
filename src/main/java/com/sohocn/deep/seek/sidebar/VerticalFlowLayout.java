@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.window;
+package com.sohocn.deep.seek.sidebar;
 
 import java.awt.*;
 

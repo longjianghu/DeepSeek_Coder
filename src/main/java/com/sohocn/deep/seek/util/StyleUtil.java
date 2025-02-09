@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.utils;
+package com.sohocn.deep.seek.util;
 
 import java.awt.*;
 
