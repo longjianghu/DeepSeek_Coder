@@ -208,7 +208,7 @@ public class DeepSeekToolWindow {
 
                             // 更新消息内容
                             JEditorPane textArea = (JEditorPane)aiBubble.getClientProperty("textArea");
-                            textArea.setText(MarkdownUtil.renderMarkdown(currentResponse));
+                            textArea.setText(MarkdownUtil.render(currentResponse));
 
                             // 调整大小，考虑侧边栏宽度
                             int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
@@ -291,7 +291,7 @@ public class DeepSeekToolWindow {
 
         // 创建消息文本区域
         JTextPane textArea = new JTextPane();
-        textArea.setContentType("text/plain");
+        textArea.setContentType("text/html");
         textArea.setEditable(false);
         textArea.setBackground(isUser ? LayoutUtil.inputBackgroundColor() : LayoutUtil.backgroundColor());
         textArea.setForeground(JBColor.foreground());
@@ -300,7 +300,7 @@ public class DeepSeekToolWindow {
         textArea.setOpaque(false);
 
         // 设置消息内容
-        textArea.setText(message);
+        textArea.setText(MarkdownUtil.render(message));
 
         // 存储原始消息和文本区域
         bubble.putClientProperty("originalMessage", message);
