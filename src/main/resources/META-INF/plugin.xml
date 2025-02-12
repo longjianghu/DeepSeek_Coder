@@ -22,9 +22,9 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
         <h3>1.0.3</h3>
         <ul>
             <li>添加temperature参数，默认设置为0.0,自动保存关联的上下文数量。</li>
-            <li>新增聊天模型配置选项，优化聊天输入框样式!</li>
+            <li>新增聊天模型配置选项(支持R1推理模型)，优化聊天输入框样式!</li>
             <li>Introduce a temperature parameter with a default value of 0.0, and enable automatic saving of the associated context count.</li>
-            <li>Introduce new chat model configuration options and enhance the styling of the chat input box.</li>
+            <li>Add a new chat model configuration option (supporting R1 inference model) and optimize the chat input box style.</li>
         </ul>
     ]]></change-notes>
     <!-- Product and plugin compatibility requirements.
