@@ -9,6 +9,10 @@ import org.jetbrains.annotations.NotNull;
 public class MarkdownUtil {
     public static String render(String markdownText) {
         try {
+            if (markdownText.isEmpty()) {
+                return "";
+            }
+
             // 创建 Markdown 解析器
             MarkdownParser parser = new MarkdownParser(new CommonMarkFlavourDescriptor());
             ASTNode ast = parser.buildMarkdownTreeFromString(markdownText);

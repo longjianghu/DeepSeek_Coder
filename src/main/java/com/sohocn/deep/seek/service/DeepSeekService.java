@@ -16,14 +16,18 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.diagnostic.Logger;
+import com.sohocn.deep.seek.bo.MessageBO;
 import com.sohocn.deep.seek.constant.AppConstant;
 import com.sohocn.deep.seek.sidebar.ChatMessage;
 
 public class DeepSeekService {
+    private static final Logger logger = Logger.getInstance(DeepSeekService.class);
+
+    private final Gson gson = new Gson();
+
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
         PropertiesComponent instance = PropertiesComponent.getInstance();
@@ -62,7 +66,7 @@ public class DeepSeekService {
 
             if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
-                List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
+                List<ChatMessage> chatMessages = gson.fromJson(chatHistoryJson, listType);
 
                 int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
 
@@ -83,7 +87,7 @@ public class DeepSeekService {
             requestBody.put("messages", messages);
 
             // 转换为JSON
-            String jsonBody = new com.google.gson.Gson().toJson(requestBody);
+            String jsonBody = gson.toJson(requestBody);
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
 
             // 发送请求并处理流式响应
@@ -111,45 +115,45 @@ public class DeepSeekService {
 
                         if (line.startsWith("data: ")) {
                             String jsonData = line.substring(6);
+
                             if ("[DONE]".equals(jsonData)) {
                                 break;
                             }
 
                             try {
-                                JsonObject jsonObject = JsonParser.parseString(jsonData).getAsJsonObject();
+                                MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
+                                MessageBO.Choices choices = Optional
+                                    .ofNullable(messageBO.getChoices())
+                                    .map(choicesList -> choicesList.get(0))
+                                    .orElse(null);
 
-                                JsonObject delta = jsonObject
-                                    .getAsJsonArray("choices")
-                                    .get(0)
-                                    .getAsJsonObject()
-                                    .getAsJsonObject("delta");
+                                MessageBO.Delta delta =
+                                    Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
 
-                                // 检查是否有 reasoning_content 字段
-                                if (delta.has("reasoning_content")) {
-                                    String content = delta.get("reasoning_content").getAsString();
-                                    onChunk.accept(content);
-                                }
+                                if (Objects.nonNull(delta)) {
+                                    String content =
+                                        Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
 
-                                if (delta.has("content")) {
-                                    String content = delta.get("content").getAsString();
-                                    onChunk.accept(content);
+                                    if (Objects.nonNull(content)) {
+                                        onChunk.accept(content);
+                                    }
                                 }
                             } catch (Exception e) {
-                                // 忽略解析错误，继续处理下一块
+                                logger.error(e.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error during API request: " + e.getMessage());
-                e.printStackTrace();
+                logger.error("Error during API request: " + e.getMessage());
                 throw e;
             }
         } catch (Exception e) {
-            System.err.println("Error creating HTTP client: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error creating HTTP client: " + e.getMessage());
+
             throw e;
         }
+
         onComplete.run();
     }
 }

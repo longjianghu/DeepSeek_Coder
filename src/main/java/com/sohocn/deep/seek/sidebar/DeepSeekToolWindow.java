@@ -201,9 +201,10 @@ public class DeepSeekToolWindow {
                     try {
                         StringBuilder fullResponse = new StringBuilder();
 
-                        deepSeekService.streamMessage(message, chunk -> SwingUtilities.invokeLater(() -> {
+                        this.deepSeekService.streamMessage(message, chunk -> SwingUtilities.invokeLater(() -> {
                             fullResponse.append(chunk);
                             String currentResponse = fullResponse.toString();
+
                             aiBubble.putClientProperty("originalMessage", currentResponse);
 
                             // 更新消息内容
@@ -287,10 +288,11 @@ public class DeepSeekToolWindow {
                 return false;
             }
         };
+
         messagePanel.setBorder(JBUI.Borders.empty(1));
 
         // 创建消息文本区域
-        JTextPane textArea = new JTextPane();
+        JEditorPane textArea = new JEditorPane();
         textArea.setContentType("text/html");
         textArea.setEditable(false);
         textArea.setBackground(isUser ? LayoutUtil.inputBackgroundColor() : LayoutUtil.backgroundColor());
