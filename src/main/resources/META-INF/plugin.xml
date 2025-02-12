@@ -6,7 +6,7 @@
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
     <name>DeepSeek Coder</name>
-
+    <idea-version since-build="231" until-build="243.*"/>
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor email="215241062@qq.com">龙江湖</vendor>
 
@@ -14,9 +14,20 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek large model, designed to enhance programmers' coding efficiency and code quality. Leveraging advanced artificial intelligence technology, DeepSeek Coder can analyze your code in real-time and provide intelligent suggestions to help you quickly solve programming challenges.
-]]></description>
-
+<p>DeepSeek Coder是基于DeepSeek大模型开发的编程助手插件，旨在提高程序员的编码效率和代码质量。利用先进的人工智能技术，提升你的生产力。
+</p><p>
+DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek large model, designed to enhance programmers' coding efficiency and code quality. Leveraging advanced artificial intelligence technology, it aims to boost your productivity.]]></description>
+    <change-notes><![CDATA[
+        <h3>1.0.3</h3>
+        <ul>
+            <li>添加temperature参数，默认设置为0.0,自动保存关联的上下文数量。</li>
+            <li>新增聊天模型配置选项(支持R1推理模型)，优化聊天输入框样式!</li>
+            <li>调整插件的兼容性问题，支持最新的2024版本</li>
+            <li>Introduce a temperature parameter with a default value of 0.0, and enable automatic saving of the associated context count.</li>
+            <li>Add a new chat model configuration option (supporting R1 inference model) and optimize the chat input box style.</li>
+            <li>Adjust the plugin's compatibility issues to support the latest 2024 version.</li>
+        </ul>
+    ]]></change-notes>
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
@@ -25,10 +36,6 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- 确保先注册 Service -->
-        <applicationService 
-            serviceImplementation="com.sohocn.deep.seek.settings.DeepSeekSettingsState"/>
-            
         <!-- 配置页面 -->
         <applicationConfigurable
                 parentId="tools"
@@ -39,8 +46,7 @@ DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek
         <!-- 工具窗口 -->
         <toolWindow id="DeepSeek Coder"
                     anchor="right"
-                    factoryClass="com.sohocn.deep.seek.window.DeepSeekToolWindowFactory"
-                    icon="icons/deepseek.svg"
-                    darkIcon="icons/deepseek.svg"/>
+                    factoryClass="com.sohocn.deep.seek.sidebar.DeepSeekToolWindowFactory"
+                    icon="/icons/deepseek.svg"/>
     </extensions>
 </idea-plugin>

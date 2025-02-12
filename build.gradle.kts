@@ -25,6 +25,8 @@ tasks {
   withType<JavaCompile> {
     sourceCompatibility = "17"
     targetCompatibility = "17"
+    options.annotationProcessorPath = configurations.annotationProcessor
+    options.compilerArgs.add("-parameters")
   }
   withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = "17"

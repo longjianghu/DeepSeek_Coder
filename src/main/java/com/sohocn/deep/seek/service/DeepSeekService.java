@@ -16,18 +16,25 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.diagnostic.Logger;
+import com.sohocn.deep.seek.bo.MessageBO;
 import com.sohocn.deep.seek.constant.AppConstant;
-import com.sohocn.deep.seek.window.ChatMessage;
+import com.sohocn.deep.seek.sidebar.ChatMessage;
 
 public class DeepSeekService {
+    private static final Logger logger = Logger.getInstance(DeepSeekService.class);
+
+    private final Gson gson = new Gson();
+
     // 修改方法签名，添加 token 使用回调
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
-        String apiKey = PropertiesComponent.getInstance().getValue(AppConstant.API_KEY);
-        String prompt = PropertiesComponent.getInstance().getValue(AppConstant.PROMPT);
+        PropertiesComponent instance = PropertiesComponent.getInstance();
+
+        String apiKey = instance.getValue(AppConstant.API_KEY);
+        String prompt = instance.getValue(AppConstant.PROMPT);
+        String model = instance.getValue(AppConstant.MODEL);
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
@@ -43,8 +50,9 @@ public class DeepSeekService {
 
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-chat");
-            requestBody.put("stream", true); // 启用流式输出
+            requestBody.put("model", model);
+            requestBody.put("temperature", 0.0);
+            requestBody.put("stream", true);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
@@ -53,19 +61,21 @@ public class DeepSeekService {
             }
 
             // 获取历史记录
-            String chatHistoryJson = PropertiesComponent.getInstance().getValue(AppConstant.CHAT_HISTORY);
-            String optionValue = PropertiesComponent.getInstance().getValue(AppConstant.OPTION_VALUE);
+            String chatHistoryJson = instance.getValue(AppConstant.CHAT_HISTORY);
+            String optionValue = instance.getValue(AppConstant.OPTION_VALUE);
 
             if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
-                List<ChatMessage> chatMessages = new Gson().fromJson(chatHistoryJson, listType);
+                List<ChatMessage> chatMessages = gson.fromJson(chatHistoryJson, listType);
 
                 int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
 
                 // 获取最近的一条交互记录
                 if (!chatMessages.isEmpty()) {
-                    List<ChatMessage> lastTwoMessages =
-                        chatMessages.subList(chatMessages.size() - limitNumber * 2, chatMessages.size());
+                    int size = chatMessages.size();
+                    int limit = size - limitNumber * 2;
+
+                    List<ChatMessage> lastTwoMessages = limit > 0 ? chatMessages.subList(limit, size) : chatMessages;
 
                     for (ChatMessage lastTwoMessage : lastTwoMessages) {
                         messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
@@ -77,7 +87,7 @@ public class DeepSeekService {
             requestBody.put("messages", messages);
 
             // 转换为JSON
-            String jsonBody = new com.google.gson.Gson().toJson(requestBody);
+            String jsonBody = gson.toJson(requestBody);
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
 
             // 发送请求并处理流式响应
@@ -89,6 +99,7 @@ public class DeepSeekService {
                 }
 
                 HttpEntity entity = response.getEntity();
+
                 if (entity == null) {
                     throw new IOException("Empty response from API");
                 }
@@ -104,41 +115,45 @@ public class DeepSeekService {
 
                         if (line.startsWith("data: ")) {
                             String jsonData = line.substring(6);
+
                             if ("[DONE]".equals(jsonData)) {
                                 break;
                             }
 
                             try {
-                                JsonObject jsonObject = JsonParser.parseString(jsonData).getAsJsonObject();
+                                MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
+                                MessageBO.Choices choices = Optional
+                                    .ofNullable(messageBO.getChoices())
+                                    .map(choicesList -> choicesList.get(0))
+                                    .orElse(null);
 
-                                JsonObject delta = jsonObject
-                                    .getAsJsonArray("choices")
-                                    .get(0)
-                                    .getAsJsonObject()
-                                    .getAsJsonObject("delta");
+                                MessageBO.Delta delta =
+                                    Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
 
-                                // 检查是否有 content 字段
-                                if (delta.has("content")) {
-                                    String content = delta.get("content").getAsString();
-                                    // 直接传递原始内容，由显示层处理渲染
-                                    onChunk.accept(content);
+                                if (Objects.nonNull(delta)) {
+                                    String content =
+                                        Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
+
+                                    if (Objects.nonNull(content)) {
+                                        onChunk.accept(content);
+                                    }
                                 }
                             } catch (Exception e) {
-                                // 忽略解析错误，继续处理下一块
+                                logger.error(e.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error during API request: " + e.getMessage());
-                e.printStackTrace();
+                logger.error("Error during API request: " + e.getMessage());
                 throw e;
             }
         } catch (Exception e) {
-            System.err.println("Error creating HTTP client: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error creating HTTP client: " + e.getMessage());
+
             throw e;
         }
+
         onComplete.run();
     }
 }

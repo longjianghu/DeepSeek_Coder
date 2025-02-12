@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'com.sohocn'
-version '1.0.1'
+version '1.0.3'
 
 repositories {
     mavenCentral()
@@ -13,13 +13,14 @@ repositories {
 dependencies {
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-    implementation 'com.vladsch.flexmark:flexmark-all:0.64.0'
+    compileOnly("org.projectlombok:lombok:1.18.30")
+    annotationProcessor("org.projectlombok:lombok:1.18.30")
 }
 
 intellij {
-    version = '2023.1.1'
-    type = 'IC'
-    plugins = ['com.intellij.java']
+    version = '2023.3.3'
+    type = 'IU'
+    plugins = ['com.intellij.java', 'org.intellij.plugins.markdown']
 }
 
 java {
@@ -30,7 +31,7 @@ java {
 tasks {
     patchPluginXml {
         sinceBuild = '231'
-        untilBuild = '241.*'
+        untilBuild = '243.*'
     }
 
     signPlugin {
