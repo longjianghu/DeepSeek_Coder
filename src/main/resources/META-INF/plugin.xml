@@ -14,10 +14,9 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-<p>DeepSeek Coder是基于DeepSeek大模型开发的编程助手插件，旨在提高程序员的编码效率和代码质量。利用先进的人工智能技术，DeepSeek Coder可以实时分析您的代码，并提供智能建议，帮助您快速解决编程挑战。
+<p>DeepSeek Coder是基于DeepSeek大模型开发的编程助手插件，旨在提高程序员的编码效率和代码质量。利用先进的人工智能技术，提升你的生产力。
 </p><p>
-DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek large model, designed to enhance programmers' coding efficiency and code quality. Leveraging advanced artificial intelligence technology, DeepSeek Coder can analyze your code in real-time and provide intelligent suggestions to help you quickly solve programming challenges.</p>
-]]></description>
+DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek large model, designed to enhance programmers' coding efficiency and code quality. Leveraging advanced artificial intelligence technology, it aims to boost your productivity.]]></description>
     <change-notes><![CDATA[
         <h3>1.0.3</h3>
         <ul>
