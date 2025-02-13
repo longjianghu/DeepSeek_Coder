@@ -38,7 +38,7 @@ public class DeepSeekToolWindowFactory implements ToolWindowFactory {
             }
         };
 
-        AnAction button2 = new AnAction("Clear Chat History", "", AllIcons.Actions.Cancel) {
+        AnAction button2 = new AnAction("Clear Chat History", "", AllIcons.Actions.GC) {
             @Override
             public void actionPerformed(@NotNull AnActionEvent e) {
                 // 按钮1的点击事件
