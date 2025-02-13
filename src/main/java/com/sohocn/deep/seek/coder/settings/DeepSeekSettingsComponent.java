@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.settings;
+package com.sohocn.deep.seek.coder.settings;
 
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -18,10 +18,10 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.messages.MessageBus;
 import com.intellij.util.ui.JBUI;
-import com.sohocn.deep.seek.constant.AppConstant;
-import com.sohocn.deep.seek.event.ChangeEvent;
-import com.sohocn.deep.seek.event.ChangeNotifier;
-import com.sohocn.deep.seek.util.LayoutUtil;
+import com.sohocn.deep.seek.coder.constant.AppConstant;
+import com.sohocn.deep.seek.coder.event.ChangeEvent;
+import com.sohocn.deep.seek.coder.event.ChangeNotifier;
+import com.sohocn.deep.seek.coder.util.LayoutUtil;
 
 public class DeepSeekSettingsComponent {
     private final JPanel mainPanel;

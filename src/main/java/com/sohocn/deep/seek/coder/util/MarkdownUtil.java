@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.util;
+package com.sohocn.deep.seek.coder.util;
 
 import org.intellij.markdown.ast.ASTNode;
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor;

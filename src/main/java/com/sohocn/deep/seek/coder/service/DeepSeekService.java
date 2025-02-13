@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.service;
+package com.sohocn.deep.seek.coder.service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,9 +19,9 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.sohocn.deep.seek.bo.MessageBO;
-import com.sohocn.deep.seek.constant.AppConstant;
-import com.sohocn.deep.seek.sidebar.ChatMessage;
+import com.sohocn.deep.seek.coder.bo.MessageBO;
+import com.sohocn.deep.seek.coder.constant.AppConstant;
+import com.sohocn.deep.seek.coder.sidebar.ChatMessage;
 
 public class DeepSeekService {
     private static final Logger logger = Logger.getInstance(DeepSeekService.class);

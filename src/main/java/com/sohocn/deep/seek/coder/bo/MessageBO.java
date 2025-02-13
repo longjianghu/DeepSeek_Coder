@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.bo;
+package com.sohocn.deep.seek.coder.bo;
 
 import java.util.List;
 

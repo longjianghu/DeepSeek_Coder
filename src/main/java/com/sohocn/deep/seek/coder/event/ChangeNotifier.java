@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.event;
+package com.sohocn.deep.seek.coder.event;
 
 import com.intellij.util.messages.Topic;
 

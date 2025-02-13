@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.sidebar;
+package com.sohocn.deep.seek.coder.sidebar;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -15,11 +15,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectManagerListener;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.intellij.ui.Gray;
@@ -28,11 +26,11 @@ import com.intellij.ui.components.JBPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.util.ui.JBUI;
-import com.sohocn.deep.seek.constant.AppConstant;
-import com.sohocn.deep.seek.event.ChangeNotifier;
-import com.sohocn.deep.seek.service.DeepSeekService;
-import com.sohocn.deep.seek.util.LayoutUtil;
-import com.sohocn.deep.seek.util.MarkdownUtil;
+import com.sohocn.deep.seek.coder.constant.AppConstant;
+import com.sohocn.deep.seek.coder.event.ChangeNotifier;
+import com.sohocn.deep.seek.coder.service.DeepSeekService;
+import com.sohocn.deep.seek.coder.util.LayoutUtil;
+import com.sohocn.deep.seek.coder.util.MarkdownUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 
@@ -71,44 +69,6 @@ public class DeepSeekToolWindow {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0)); // 增加图标间距
         rightPanel.setOpaque(false);
 
-        // 设置按钮
-        JLabel settingsLabel = createToolbarButton("⚙️", "Setting");
-        settingsLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                ShowSettingsUtil.getInstance().showSettingsDialog(project, AppConstant.ID);
-            }
-        });
-
-        JLabel clearHistoryLabel = createToolbarButton("🗑️", "Clear History");
-        clearHistoryLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                int result = Messages
-                    .showYesNoDialog("Are you sure you want to clear all chat history?", "Clear Confirmation",
-                        Messages.getQuestionIcon());
-                if (result == Messages.YES) {
-                    chatPanel.removeAll();
-                    chatPanel.revalidate();
-                    chatPanel.repaint();
-                    // 清除保存的历史记录
-                    instance.unsetValue(AppConstant.CHAT_HISTORY);
-                }
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                clearHistoryLabel.setForeground(JBColor.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                clearHistoryLabel.setForeground(Gray._153);
-            }
-        });
-
-        rightPanel.add(settingsLabel);
-        rightPanel.add(clearHistoryLabel);
         topPanel.add(rightPanel, BorderLayout.EAST);
 
         // 添加回车发送功能

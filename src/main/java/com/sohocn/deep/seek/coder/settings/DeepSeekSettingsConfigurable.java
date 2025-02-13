@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.settings;
+package com.sohocn.deep.seek.coder.settings;
 
 import javax.swing.*;
 

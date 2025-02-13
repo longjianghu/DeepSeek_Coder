@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.event;
+package com.sohocn.deep.seek.coder.event;
 
 public class ChangeEvent {
     private final String apiKey;

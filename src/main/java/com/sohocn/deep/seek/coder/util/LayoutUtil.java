@@ -1,4 +1,4 @@
-package com.sohocn.deep.seek.util;
+package com.sohocn.deep.seek.coder.util;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -10,7 +10,7 @@ import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.Gray;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ui.JBUI;
-import com.sohocn.deep.seek.constant.AppConstant;
+import com.sohocn.deep.seek.coder.constant.AppConstant;
 
 public class LayoutUtil {
     public static JLabel JLabel(String labelName) {
