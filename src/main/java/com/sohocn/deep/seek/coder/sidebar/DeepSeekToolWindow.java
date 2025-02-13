@@ -76,7 +76,7 @@ public class DeepSeekToolWindow {
         settingsLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                ShowSettingsUtil.getInstance().showSettingsDialog(project, AppConstant.PLUGIN_ID);
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, AppConstant.PLUGIN_NAME);
             }
         });
 
