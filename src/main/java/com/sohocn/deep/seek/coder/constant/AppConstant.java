@@ -14,5 +14,5 @@ public interface AppConstant {
     String DEFAULT_MODEL = "deepseek-chat";
     String DEFAULT_PROMPT =
         "You are a helpful assistant specialized in programming and software development.Your task is to assist users with questions related to coding, debugging, software design, algorithms, and other programming-related topics. If a user asks a question outside of these areas, politely inform them that you are only able to assist with programming-related queries.";
-    String NO_API_KEY_PROMPT = "Please configure your DeepSeek API key in Settings -> Tools -> DeepSeek Coder!";
+    String NO_API_KEY_PROMPT = "Click the top right config button to set your API Key.";
 }
