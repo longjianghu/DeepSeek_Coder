@@ -15,6 +15,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectManagerListener;
@@ -33,15 +34,18 @@ import com.sohocn.deep.seek.coder.util.LayoutUtil;
 import com.sohocn.deep.seek.coder.util.MarkdownUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
+import lombok.Getter;
 
 public class DeepSeekToolWindow {
     private static final int MESSAGE_HORIZONTAL_MARGIN = 20; // 左右边距各20像素
     private static final Gson gson = new GsonBuilder().create();
+    @Getter
     private final JPanel content;
     private final JBPanel<JBPanel<?>> chatPanel;
     private final JBTextArea inputArea = new JBTextArea();
     private final DeepSeekService deepSeekService;
     private final PropertiesComponent instance = PropertiesComponent.getInstance();
+    private static final Logger logger = Logger.getInstance(DeepSeekToolWindow.class);
 
     public DeepSeekToolWindow(Project project) {
         this.deepSeekService = new DeepSeekService();
@@ -354,7 +358,7 @@ public class DeepSeekToolWindow {
                 instance.setValue(AppConstant.CHAT_HISTORY, json);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("保存聊天记录 错误原因:{}", e.getMessage());
         }
     }
 
@@ -393,31 +397,16 @@ public class DeepSeekToolWindow {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("加载聊天记录 错误原因:{}", e.getMessage());
         }
     }
 
-    // 创建工具栏按钮
-    private JLabel createToolbarButton(String icon, String tooltip) {
-        JLabel button = new JLabel(icon);
-        button.setToolTipText(tooltip);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setForeground(Gray._153);
-        button.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16)); // 调整图标大小
-
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setForeground(JBColor.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setForeground(Gray._153);
-            }
-        });
-
-        return button;
+    public void clearChatHistory() {
+        chatPanel.removeAll();
+        chatPanel.revalidate();
+        chatPanel.repaint();
+        // 清除保存的历史记录
+        instance.unsetValue(AppConstant.CHAT_HISTORY);
     }
 
     // 现代风格的滚动条 UI
@@ -456,10 +445,6 @@ public class DeepSeekToolWindow {
             g2.fillRoundRect(thumbBounds.x + 2, thumbBounds.y + 2, thumbBounds.width - 4, thumbBounds.height - 4, 8, 8);
             g2.dispose();
         }
-    }
-
-    public JPanel getContent() {
-        return content;
     }
 
     // 修改输入区域的初始化代码

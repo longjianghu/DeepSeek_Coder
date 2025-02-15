@@ -5,13 +5,14 @@ import javax.swing.*;
 import org.jetbrains.annotations.Nullable;
 
 import com.intellij.openapi.options.Configurable;
+import com.sohocn.deep.seek.coder.constant.AppConstant;
 
 public class DeepSeekSettingsConfigurable implements Configurable {
     private DeepSeekSettingsComponent mySettingsComponent;
 
     @Override
     public String getDisplayName() {
-        return "DeepSeek Coder";
+        return AppConstant.PLUGIN_NAME;
     }
 
     @Override
