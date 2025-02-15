@@ -298,7 +298,7 @@ public class DeepSeekToolWindow {
 
         boolean hasKey = apiKey != null && !apiKey.trim().isEmpty();
 
-        inputArea.setText(hasKey ? "" : AppConstant.NO_API_KEY_PROMPT);
+        inputArea.setText(hasKey ? "" : AppConstant.API_KEY_TIPS);
         inputArea.setEnabled(hasKey);
     }
 
@@ -480,7 +480,7 @@ public class DeepSeekToolWindow {
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
-        inputArea.setText(AppConstant.NO_API_KEY_PROMPT);
+        inputArea.setText(AppConstant.API_KEY_TIPS);
 
         // 创建包装面板并设置间距
         JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // 设置组件间距为5
