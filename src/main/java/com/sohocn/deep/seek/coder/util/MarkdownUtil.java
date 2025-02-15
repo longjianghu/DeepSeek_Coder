@@ -57,12 +57,14 @@ public class MarkdownUtil {
 
             return warpHtml(html);
         } catch (Exception e) {
-            // 如果发生异常，返回原始 Markdown 文本
             return markdownText;
         }
     }
 
     private static String warpHtml(String html) {
-        return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"></head>" + html + "</html>";
+        String style =
+            "<link rel=\"stylesheet\"  href=\"https://cdn.bootcdn.net/ajax/libs/normalize/8.0.1/normalize.min.css\">";
+
+        return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\">" + style + "</head>" + html + "</html>";
     }
 }

@@ -3,6 +3,14 @@ plugins {
     id 'org.jetbrains.intellij' version '1.16.1'
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDirs = ["src/main/resources"]
+        }
+    }
+}
+
 group 'com.sohocn'
 version '1.0.4'
 

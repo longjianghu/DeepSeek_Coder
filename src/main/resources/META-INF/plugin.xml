@@ -18,6 +18,13 @@
 </p><p>
 DeepSeek Coder is a programming assistant plugin developed based on the DeepSeek large model, designed to enhance programmers' coding efficiency and code quality. Leveraging advanced artificial intelligence technology, it aims to boost your productivity.]]></description>
     <change-notes><![CDATA[
+         <h3>1.0.5</h3>
+        <ul>
+            <li>修复清空聊天消息失效的BUG.</li>
+            <li>因为DeepSeek官方不是很稳定,新增SiliconFlow(硅基流动)平台供大家选择.</li>
+            <li>Fixed the bug where clearing chat messages failed.</li>
+            <li>Due to the instability of the official DeepSeek service, we have added the SiliconFlow (Silicon Flow) platform as an alternative for users to choose from.</li>
+        </ul>
         <h3>1.0.4</h3>
         <ul>
             <li>修复配置按钮无效的BUG.</li>

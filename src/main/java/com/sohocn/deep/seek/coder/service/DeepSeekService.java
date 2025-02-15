@@ -20,6 +20,7 @@ import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.sohocn.deep.seek.coder.bo.MessageBO;
+import com.sohocn.deep.seek.coder.config.PlatformConfig;
 import com.sohocn.deep.seek.coder.constant.AppConstant;
 import com.sohocn.deep.seek.coder.sidebar.ChatMessage;
 
@@ -32,16 +33,21 @@ public class DeepSeekService {
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
         PropertiesComponent instance = PropertiesComponent.getInstance();
 
+        String platform = instance.getValue(AppConstant.PLATFORM);
         String apiKey = instance.getValue(AppConstant.API_KEY);
         String prompt = instance.getValue(AppConstant.PROMPT);
         String model = instance.getValue(AppConstant.MODEL);
+
+        PlatformConfig platformConfig = new PlatformConfig();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
         }
 
+        model = Objects.equals(platform, AppConstant.SILICON_FLOW) ? platformConfig.siliconFlowModelMap(model) : model;
+
         try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(AppConstant.API_URL);
+            HttpPost httpPost = new HttpPost(platformConfig.apiUrlMap(platform));
 
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
@@ -53,6 +59,9 @@ public class DeepSeekService {
             requestBody.put("model", model);
             requestBody.put("temperature", 0.0);
             requestBody.put("stream", true);
+
+            System.out.println(platformConfig.apiUrlMap(platform));
+            System.out.println(gson.toJson(requestBody));
 
             List<Map<String, String>> messages = new ArrayList<>();
 
@@ -85,7 +94,7 @@ public class DeepSeekService {
 
             messages.add(Map.of("role", "user", "content", message));
             requestBody.put("messages", messages);
-
+            System.out.println(gson.toJson(messages));
             // 转换为JSON
             String jsonBody = gson.toJson(requestBody);
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
@@ -93,6 +102,7 @@ public class DeepSeekService {
             // 发送请求并处理流式响应
             try (CloseableHttpResponse response = client.execute(httpPost)) {
                 int statusCode = response.getStatusLine().getStatusCode();
+
                 if (statusCode != 200) {
                     // 处理非 200 响应
                     throw new IOException("API request failed with status code: " + statusCode);
@@ -146,12 +156,9 @@ public class DeepSeekService {
                 }
             } catch (Exception e) {
                 logger.error("Error during API request: " + e.getMessage());
-                throw e;
             }
         } catch (Exception e) {
             logger.error("Error creating HTTP client: " + e.getMessage());
-
-            throw e;
         }
 
         onComplete.run();
