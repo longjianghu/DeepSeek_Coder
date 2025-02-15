@@ -60,9 +60,6 @@ public class DeepSeekService {
             requestBody.put("temperature", 0.0);
             requestBody.put("stream", true);
 
-            System.out.println(platformConfig.apiUrlMap(platform));
-            System.out.println(gson.toJson(requestBody));
-
             List<Map<String, String>> messages = new ArrayList<>();
 
             if (prompt != null && !prompt.trim().isEmpty()) {
@@ -94,7 +91,7 @@ public class DeepSeekService {
 
             messages.add(Map.of("role", "user", "content", message));
             requestBody.put("messages", messages);
-            System.out.println(gson.toJson(messages));
+
             // 转换为JSON
             String jsonBody = gson.toJson(requestBody);
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
