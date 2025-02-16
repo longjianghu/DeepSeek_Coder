@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.apache.http.HttpEntity;
@@ -28,12 +27,12 @@ import com.sohocn.deep.seek.coder.sidebar.ChatMessage;
 public class DeepSeekService {
     private static final Logger logger = Logger.getInstance(DeepSeekService.class);
     private final CloseableHttpClient client = HttpClients.createDefault();
-    private final AtomicReference<Boolean> isCanceled = new AtomicReference<>();
+    private volatile boolean isCanceled = false;
     private final Gson gson = new Gson();
 
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) {
         PropertiesComponent instance = PropertiesComponent.getInstance();
-        isCanceled.set(false);
+        isCanceled = false;
 
         String platform = instance.getValue(AppConstant.PLATFORM);
         String apiKey = instance.getValue(AppConstant.API_KEY);
@@ -79,68 +78,71 @@ public class DeepSeekService {
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
 
             // 发送请求并处理流式响应
-            try (CloseableHttpResponse response = client.execute(httpPost)) {
-                int statusCode = response.getStatusLine().getStatusCode();
+            this.sendRequest(onChunk, httpPost);
+        } catch (Exception e) {
+            logger.error("Error creating HTTP client: " + e.getMessage());
+        } finally {
+            onComplete.run();
+        }
+    }
 
-                if (statusCode != 200) {
-                    // 处理非 200 响应
-                    throw new IOException("API request failed with status code: " + statusCode);
-                }
+    private void sendRequest(Consumer<String> onChunk, HttpPost httpPost) {
+        try (CloseableHttpResponse response = client.execute(httpPost)) {
+            int statusCode = response.getStatusLine().getStatusCode();
 
-                HttpEntity entity = response.getEntity();
+            if (statusCode != 200) {
+                throw new IOException("API request failed with status code: " + statusCode);
+            }
 
-                if (entity == null) {
-                    throw new IOException("Empty response from API");
-                }
+            HttpEntity entity = response.getEntity();
 
-                try (BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
-                    String line;
+            if (entity == null) {
+                throw new IOException("Empty response from API");
+            }
 
-                    while ((line = reader.readLine()) != null) {
-                        if (line.isEmpty()) {
-                            continue;
+            try (BufferedReader reader =
+                new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+
+                    if (line.startsWith("data: ")) {
+                        String jsonData = line.substring(6);
+
+                        if (Objects.equals("[DONE]", jsonData) || isCanceled) {
+                            break;
                         }
 
-                        if (line.startsWith("data: ")) {
-                            String jsonData = line.substring(6);
+                        try {
+                            MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
+                            MessageBO.Choices choices = Optional
+                                .ofNullable(messageBO.getChoices())
+                                .map(choicesList -> choicesList.get(0))
+                                .orElse(null);
 
-                            if (Objects.equals("[DONE]", jsonData) || isCanceled.get()) {
-                                break;
-                            }
+                            MessageBO.Delta delta =
+                                Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
 
-                            try {
-                                MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
-                                MessageBO.Choices choices = Optional
-                                    .ofNullable(messageBO.getChoices())
-                                    .map(choicesList -> choicesList.get(0))
-                                    .orElse(null);
+                            if (Objects.nonNull(delta)) {
+                                String content =
+                                    Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
 
-                                MessageBO.Delta delta =
-                                    Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
-
-                                if (Objects.nonNull(delta)) {
-                                    String content =
-                                        Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
-
-                                    if (Objects.nonNull(content)) {
-                                        onChunk.accept(content);
-                                    }
+                                if (Objects.nonNull(content)) {
+                                    onChunk.accept(content);
                                 }
-                            } catch (Exception e) {
-                                logger.error(e.getMessage());
                             }
+                        } catch (Exception e) {
+                            logger.error(e.getMessage());
                         }
                     }
                 }
-            } catch (Exception e) {
-                logger.error("Error during API request: " + e.getMessage());
             }
         } catch (Exception e) {
-            logger.error("Error creating HTTP client: " + e.getMessage());
+            logger.error("Error during API request: " + e.getMessage());
         }
-
-        onComplete.run();
     }
 
     private void setChatHistory(PropertiesComponent instance, List<Map<String, String>> messages) {
@@ -168,6 +170,6 @@ public class DeepSeekService {
     }
 
     public void cancelRequest() {
-        isCanceled.set(true);
+        isCanceled = true;
     }
 }
