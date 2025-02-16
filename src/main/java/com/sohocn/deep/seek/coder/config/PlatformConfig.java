@@ -19,7 +19,7 @@ public class PlatformConfig {
         Map<String, String> map = new HashMap<>();
 
         map.put(AppConstant.DEEP_SEEK, "https://www.deepseek.com?from=DeepSeekCoder");
-        map.put(AppConstant.SILICON_FLOW, "https://www.siliconflow.com?from=DeepSeekCoder");
+        map.put(AppConstant.SILICON_FLOW, "https://cloud.siliconflow.cn/i/2C29dv5c?from=DeepSeekCoder");
 
         return map.get(platform);
     }
