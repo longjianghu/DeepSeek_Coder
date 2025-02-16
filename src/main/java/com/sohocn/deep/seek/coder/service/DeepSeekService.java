@@ -6,14 +6,18 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.util.Timeout;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -26,11 +30,39 @@ import com.sohocn.deep.seek.coder.sidebar.ChatMessage;
 
 public class DeepSeekService {
     private static final Logger logger = Logger.getInstance(DeepSeekService.class);
-
     private final Gson gson = new Gson();
+    private final AtomicBoolean isCancelled = new AtomicBoolean(false);
+    private ClassicHttpResponse currentResponse;
+    private final Object responseLock = new Object();
 
-    // 修改方法签名，添加 token 使用回调
+    public void cancelRequest() {
+        isCancelled.set(true);
+
+        synchronized (responseLock) {
+            if (currentResponse != null) {
+                try {
+                    HttpEntity entity = currentResponse.getEntity();
+
+                    if (entity != null) {
+                        try {
+                            entity.close();
+                        } catch (IOException e) {
+                            // 忽略实体关闭错误，因为这可能已经被关闭
+                            logger.debug("Entity already closed: " + e.getMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    // 忽略获取实体时的错误，因为响应可能已经被关闭
+                    logger.debug("Response already closed: " + e.getMessage());
+                }
+
+                currentResponse = null;
+            }
+        }
+    }
+
     public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
+        isCancelled.set(false);
         PropertiesComponent instance = PropertiesComponent.getInstance();
 
         String platform = instance.getValue(AppConstant.PLATFORM);
@@ -38,16 +70,37 @@ public class DeepSeekService {
         String prompt = instance.getValue(AppConstant.PROMPT);
         String model = instance.getValue(AppConstant.MODEL);
 
-        PlatformConfig platformConfig = new PlatformConfig();
+        // 验证必要的配置
+        if (platform == null || platform.trim().isBlank()) {
+            throw new IllegalStateException("Platform not configured");
+        }
 
-        if (apiKey == null || apiKey.trim().isEmpty()) {
+        if (apiKey == null || apiKey.trim().isBlank()) {
             throw new IllegalStateException("API Key not configured");
         }
 
+        if (model == null || model.trim().isBlank()) {
+            throw new IllegalStateException("Model not configured");
+        }
+
+        PlatformConfig platformConfig = new PlatformConfig();
         model = Objects.equals(platform, AppConstant.SILICON_FLOW) ? platformConfig.siliconFlowModelMap(model) : model;
 
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(platformConfig.apiUrlMap(platform));
+        String apiUrl = platformConfig.apiUrlMap(platform);
+
+        if (apiUrl == null || apiUrl.trim().isEmpty()) {
+            throw new IllegalStateException("Invalid API URL for platform: " + platform);
+        }
+
+        RequestConfig requestConfig = RequestConfig
+            .custom()
+            .setConnectionKeepAlive(Timeout.ofMilliseconds(5000))
+            .setConnectionRequestTimeout(Timeout.ofMilliseconds(5000))
+            .setResponseTimeout(Timeout.ofMilliseconds(5000))
+            .build();
+
+        try (CloseableHttpClient client = HttpClients.custom().setDefaultRequestConfig(requestConfig).build()) {
+            HttpPost httpPost = new HttpPost(apiUrl);
 
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
@@ -74,17 +127,19 @@ public class DeepSeekService {
                 Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
                 List<ChatMessage> chatMessages = gson.fromJson(chatHistoryJson, listType);
 
-                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
-
-                // 获取最近的一条交互记录
-                if (!chatMessages.isEmpty()) {
+                if (chatMessages != null && !chatMessages.isEmpty()) {
+                    int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
                     int size = chatMessages.size();
                     int limit = size - limitNumber * 2;
 
                     List<ChatMessage> lastTwoMessages = limit > 0 ? chatMessages.subList(limit, size) : chatMessages;
 
                     for (ChatMessage lastTwoMessage : lastTwoMessages) {
-                        messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
+                        if (lastTwoMessage != null && lastTwoMessage.getRole() != null
+                            && lastTwoMessage.getContent() != null) {
+                            messages
+                                .add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
+                        }
                     }
                 }
             }
@@ -94,19 +149,29 @@ public class DeepSeekService {
 
             // 转换为JSON
             String jsonBody = gson.toJson(requestBody);
+            if (jsonBody == null) {
+                throw new IllegalStateException("Failed to serialize request body");
+            }
+
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
 
-            // 发送请求并处理流式响应
-            try (CloseableHttpResponse response = client.execute(httpPost)) {
-                int statusCode = response.getStatusLine().getStatusCode();
+            // 创建响应处理器
+            HttpClientResponseHandler<Void> responseHandler = response -> {
+                if (response == null) {
+                    throw new IOException("Null response received");
+                }
+
+                synchronized (responseLock) {
+                    currentResponse = response;
+                }
+
+                int statusCode = response.getCode();
 
                 if (statusCode != 200) {
-                    // 处理非 200 响应
                     throw new IOException("API request failed with status code: " + statusCode);
                 }
 
                 HttpEntity entity = response.getEntity();
-
                 if (entity == null) {
                     throw new IOException("Empty response from API");
                 }
@@ -115,13 +180,16 @@ public class DeepSeekService {
                     new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
                     String line;
 
-                    while ((line = reader.readLine()) != null) {
+                    while ((line = reader.readLine()) != null && !isCancelled.get()) {
                         if (line.isEmpty()) {
                             continue;
                         }
 
                         if (line.startsWith("data: ")) {
                             String jsonData = line.substring(6);
+                            if (jsonData.isEmpty()) {
+                                continue;
+                            }
 
                             if ("[DONE]".equals(jsonData)) {
                                 break;
@@ -129,35 +197,62 @@ public class DeepSeekService {
 
                             try {
                                 MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
+                                if (messageBO == null) {
+                                    continue;
+                                }
+
                                 MessageBO.Choices choices = Optional
                                     .ofNullable(messageBO.getChoices())
-                                    .map(choicesList -> choicesList.get(0))
+                                    .filter(list -> !list.isEmpty())
+                                    .map(list -> list.get(0))
                                     .orElse(null);
 
-                                MessageBO.Delta delta =
-                                    Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
+                                if (choices == null) {
+                                    continue;
+                                }
 
-                                if (Objects.nonNull(delta)) {
-                                    String content =
-                                        Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
+                                MessageBO.Delta delta = choices.getDelta();
+                                if (delta == null) {
+                                    continue;
+                                }
 
-                                    if (Objects.nonNull(content)) {
-                                        onChunk.accept(content);
-                                    }
+                                String content =
+                                    Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
+
+                                if (content != null && !content.isEmpty()) {
+                                    onChunk.accept(content);
                                 }
                             } catch (Exception e) {
-                                logger.error(e.getMessage());
+                                logger.error("Error processing response chunk: " + e.getMessage(), e);
                             }
                         }
                     }
                 }
+                return null;
+            };
+
+            try {
+                client.execute(httpPost, responseHandler);
             } catch (Exception e) {
-                logger.error("Error during API request: " + e.getMessage());
+                logger.error("Error during API request: " + e.getMessage(), e);
+                throw e;
+            } finally {
+                if (currentResponse != null) {
+                    try {
+                        currentResponse.close();
+                    } catch (IOException e) {
+                        logger.error("Error closing response: " + e.getMessage(), e);
+                    }
+                    currentResponse = null;
+                }
             }
         } catch (Exception e) {
-            logger.error("Error creating HTTP client: " + e.getMessage());
+            logger.error("Error creating HTTP client: " + e.getMessage(), e);
+            throw e;
         }
 
-        onComplete.run();
+        if (!isCancelled.get()) {
+            onComplete.run();
+        }
     }
 }

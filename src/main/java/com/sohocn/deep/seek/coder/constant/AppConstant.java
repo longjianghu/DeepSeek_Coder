@@ -15,6 +15,9 @@ public interface AppConstant {
     String MODEL = "com.sohocn.deepseek.model";
     String CONTEXT = "com.sohocn.deepseek.context";
 
+    String SEND_BUTTON = "Send";
+    String STOP_BUTTON = "Stop";
+
     String DEFAULT_PLATFORM = "siliconFlow";
     String DEFAULT_MODEL = "deepseek-chat";
 

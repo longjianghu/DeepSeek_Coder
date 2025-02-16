@@ -38,8 +38,8 @@ public class DeepSeekSettingsComponent {
         Map<String, String> platformMap = platformConfig.platformMap();
         Map<String, String> deepSeekModelMap = platformConfig.deepSeekModelMap();
 
-        platformField = LayoutUtil.comboBox(platformMap, false);
-        modelField = LayoutUtil.comboBox(deepSeekModelMap, false);
+        platformField = LayoutUtil.comboBox(platformMap, AppConstant.PLATFORM, false);
+        modelField = LayoutUtil.comboBox(deepSeekModelMap, AppConstant.MODEL, false);
         promptField = LayoutUtil.jTextArea();
 
         // 创建链接面板
@@ -74,6 +74,8 @@ public class DeepSeekSettingsComponent {
         labelWrapper.add(promptLabel);
         roleDescPanel.add(scrollPane, BorderLayout.CENTER);
 
+        loadSettings();
+
         // 主面板
         mainPanel = new JPanel(new GridBagLayout());
         mainPanel.setBorder(JBUI.Borders.empty(10));
@@ -106,21 +108,18 @@ public class DeepSeekSettingsComponent {
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
         mainPanel.add(new JPanel(), gbc);
-
-        // 加载保存的设置
-        loadSettings();
     }
 
     private void loadSettings() {
+        platform = instance.getValue(AppConstant.PLATFORM, "");
         apiKey = instance.getValue(AppConstant.API_KEY, "");
-        platform = instance.getValue(AppConstant.PLATFORM, AppConstant.DEFAULT_PLATFORM);
-        model = instance.getValue(AppConstant.MODEL, AppConstant.DEFAULT_MODEL);
-        prompt = instance.getValue(AppConstant.PROMPT, AppConstant.DEFAULT_PROMPT);
+        model = instance.getValue(AppConstant.MODEL, "");
+        prompt = instance.getValue(AppConstant.PROMPT, "");
 
-        platformField.setSelectedItem(platform);
+        platformField.setSelectedItem(!platform.isBlank() ? platform : AppConstant.DEFAULT_PLATFORM);
         apiKeyField.setText(apiKey);
-        modelField.setSelectedItem(model);
-        promptField.setText(prompt);
+        modelField.setSelectedItem(!model.isBlank() ? model : AppConstant.DEFAULT_MODEL);
+        promptField.setText(!prompt.isBlank() ? prompt : AppConstant.DEFAULT_PROMPT);
     }
 
     public JPanel getPanel() {

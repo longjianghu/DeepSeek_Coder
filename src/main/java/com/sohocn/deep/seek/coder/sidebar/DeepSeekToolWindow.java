@@ -43,6 +43,7 @@ public class DeepSeekToolWindow {
     private final JPanel content = new JPanel(new BorderLayout());
     private final JBPanel<JBPanel<?>> chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
     private final JBTextArea inputArea = new JBTextArea();
+    private final JButton sendButton = new JButton();
     private final DeepSeekService deepSeekService = new DeepSeekService();
     private final PropertiesComponent instance = PropertiesComponent.getInstance();
     private static final Logger logger = Logger.getInstance(DeepSeekToolWindow.class);
@@ -154,6 +155,7 @@ public class DeepSeekToolWindow {
                 ApplicationManager.getApplication().executeOnPooledThread(() -> {
                     try {
                         StringBuilder fullResponse = new StringBuilder();
+                        sendButton.setText(AppConstant.STOP_BUTTON);
 
                         this.deepSeekService.streamMessage(message, chunk -> SwingUtilities.invokeLater(() -> {
                             fullResponse.append(chunk);
@@ -172,20 +174,21 @@ public class DeepSeekToolWindow {
                         }),
                             // 忽略 token 信息
                             () -> SwingUtilities.invokeLater(() -> {
-                                inputArea.setEnabled(true);
-                                inputArea.requestFocus();
+
                             }));
                     } catch (Exception e) {
                         SwingUtilities.invokeLater(() -> {
                             addMessageBubble("Error: " + e.getMessage());
 
                             chatPanel.remove(aiBubble);
-                            inputArea.setEnabled(true);
-                            inputArea.requestFocus();
                         });
                     } finally {
+                        inputArea.setEnabled(true);
+                        inputArea.requestFocus();
+
                         aiBubble.revalidate();
                         chatPanel.revalidate();
+                        sendButton.setText(AppConstant.SEND_BUTTON);
 
                         scrollToBottom();
                     }
@@ -488,7 +491,20 @@ public class DeepSeekToolWindow {
 
         wrapperPanel.add(LayoutUtil.jLabel("Context"));
         wrapperPanel.add(LayoutUtil.contextSelect());
-        wrapperPanel.add(LayoutUtil.jLabel("Press Enter to submit"));
+
+        sendButton.setText(AppConstant.SEND_BUTTON);
+        sendButton.addActionListener(e -> {
+            if (Objects.equals(sendButton.getText(), AppConstant.SEND_BUTTON)) {
+                sendMessage();
+            } else {
+                sendButton.setText(AppConstant.SEND_BUTTON);
+
+                this.deepSeekService.cancelRequest();
+                inputArea.setEnabled(true);
+                inputArea.requestFocus();
+            }
+        });
+        wrapperPanel.add(sendButton);
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());

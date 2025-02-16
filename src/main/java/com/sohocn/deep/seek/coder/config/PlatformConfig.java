@@ -34,7 +34,7 @@ public class PlatformConfig {
     }
 
     public String siliconFlowModelMap(String model) {
-        HashMap<String, String> map = new HashMap<>();
+        Map<String, String> map = new HashMap<>();
 
         map.put("deepseek-chat", "deepseek-ai/DeepSeek-V3");
         map.put("deepseek-reasoner", "deepseek-ai/DeepSeek-R1");

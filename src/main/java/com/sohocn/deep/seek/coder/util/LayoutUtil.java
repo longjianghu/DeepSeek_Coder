@@ -30,7 +30,7 @@ public class LayoutUtil {
         return jTextArea;
     }
 
-    public static ComboBox<String> comboBox(Map<String, String> map, boolean edit) {
+    public static ComboBox<String> comboBox(Map<String, String> map, String filed, boolean edit) {
         ComboBox<String> comboBox = new ComboBox<>(map.keySet().toArray(new String[0]));
         comboBox.setEditable(edit);
         comboBox.setRenderer(new DefaultListCellRenderer() {
@@ -49,7 +49,7 @@ public class LayoutUtil {
 
         comboBox.addActionListener(e -> {
             String selectedKey = (String)comboBox.getSelectedItem();
-            PropertiesComponent.getInstance().setValue(AppConstant.PLATFORM, selectedKey);
+            PropertiesComponent.getInstance().setValue(filed, selectedKey);
         });
 
         return comboBox;
@@ -73,13 +73,13 @@ public class LayoutUtil {
         return jLabel;
     }
 
-    public static JPanel jPanel(ComboBox<String> modelField, String labelName) {
+    public static JPanel jPanel(ComboBox<String> comboBoxField, String labelName) {
         JPanel jPanel = new JPanel(new BorderLayout());
         jPanel.setOpaque(false);
-        JBLabel apiKeyLabel = new JBLabel(labelName);
-        apiKeyLabel.setPreferredSize(new Dimension(100, 30));
-        jPanel.add(apiKeyLabel, BorderLayout.WEST);
-        jPanel.add(modelField, BorderLayout.CENTER);
+        JBLabel jbLabel = new JBLabel(labelName);
+        jbLabel.setPreferredSize(new Dimension(100, 30));
+        jPanel.add(jbLabel, BorderLayout.WEST);
+        jPanel.add(comboBoxField, BorderLayout.CENTER);
 
         return jPanel;
     }
@@ -87,9 +87,9 @@ public class LayoutUtil {
     public static JPanel jPanel(JBTextField textField, String labelName) {
         JPanel jPanel = new JPanel(new BorderLayout());
         jPanel.setOpaque(false);
-        JBLabel apiKeyLabel = new JBLabel(labelName);
-        apiKeyLabel.setPreferredSize(new Dimension(100, 30));
-        jPanel.add(apiKeyLabel, BorderLayout.WEST);
+        JBLabel jbLabel = new JBLabel(labelName);
+        jbLabel.setPreferredSize(new Dimension(100, 30));
+        jPanel.add(jbLabel, BorderLayout.WEST);
         jPanel.add(textField, BorderLayout.CENTER);
 
         return jPanel;
