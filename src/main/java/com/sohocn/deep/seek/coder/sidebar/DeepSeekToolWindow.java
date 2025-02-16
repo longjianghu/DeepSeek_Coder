@@ -499,7 +499,8 @@ public class DeepSeekToolWindow {
             } else {
                 sendButton.setText(AppConstant.SEND_BUTTON);
 
-                this.deepSeekService.cancelRequest();
+                ApplicationManager.getApplication().executeOnPooledThread(this.deepSeekService::cancelRequest);
+
                 inputArea.setEnabled(true);
                 inputArea.requestFocus();
             }
