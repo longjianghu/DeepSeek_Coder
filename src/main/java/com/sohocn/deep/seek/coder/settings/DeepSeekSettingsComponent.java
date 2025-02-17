@@ -42,6 +42,12 @@ public class DeepSeekSettingsComponent {
         modelField = LayoutUtil.comboBox(deepSeekModelMap, AppConstant.MODEL, false);
         promptField = LayoutUtil.jTextArea();
 
+        // 设置初始值
+        platformField.setSelectedItem(platform);
+        modelField.setSelectedItem(model);
+        promptField.setText(prompt);
+        apiKeyField.setText(apiKey);
+
         // 创建链接面板
         JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         linkPanel.setOpaque(false);
@@ -73,8 +79,6 @@ public class DeepSeekSettingsComponent {
         promptLabel.setPreferredSize(new Dimension(100, 20));
         labelWrapper.add(promptLabel);
         roleDescPanel.add(scrollPane, BorderLayout.CENTER);
-
-        loadSettings();
 
         // 主面板
         mainPanel = new JPanel(new GridBagLayout());
@@ -111,15 +115,10 @@ public class DeepSeekSettingsComponent {
     }
 
     private void loadSettings() {
-        platform = instance.getValue(AppConstant.PLATFORM, "");
+        platform = instance.getValue(AppConstant.PLATFORM, AppConstant.DEFAULT_PLATFORM);
+        model = instance.getValue(AppConstant.MODEL, AppConstant.DEFAULT_MODEL);
+        prompt = instance.getValue(AppConstant.PROMPT, AppConstant.DEFAULT_PROMPT);
         apiKey = instance.getValue(AppConstant.API_KEY, "");
-        model = instance.getValue(AppConstant.MODEL, "");
-        prompt = instance.getValue(AppConstant.PROMPT, "");
-
-        platformField.setSelectedItem(!platform.isBlank() ? platform : AppConstant.DEFAULT_PLATFORM);
-        apiKeyField.setText(apiKey);
-        modelField.setSelectedItem(!model.isBlank() ? model : AppConstant.DEFAULT_MODEL);
-        promptField.setText(!prompt.isBlank() ? prompt : AppConstant.DEFAULT_PROMPT);
     }
 
     public JPanel getPanel() {
@@ -170,6 +169,8 @@ public class DeepSeekSettingsComponent {
     }
 
     public void reset() {
+        loadSettings();
+
         platformField.setSelectedItem(platform);
         apiKeyField.setText(apiKey);
         modelField.setSelectedItem(model);
