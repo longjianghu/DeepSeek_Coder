@@ -20,28 +20,35 @@ import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.sohocn.deep.seek.coder.bo.MessageBO;
+import com.sohocn.deep.seek.coder.config.PlatformConfig;
 import com.sohocn.deep.seek.coder.constant.AppConstant;
 import com.sohocn.deep.seek.coder.sidebar.ChatMessage;
 
 public class DeepSeekService {
     private static final Logger logger = Logger.getInstance(DeepSeekService.class);
-
+    private final CloseableHttpClient client = HttpClients.createDefault();
+    private volatile boolean isCanceled = false;
     private final Gson gson = new Gson();
 
-    // 修改方法签名，添加 token 使用回调
-    public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) throws IOException {
+    public void streamMessage(String message, Consumer<String> onChunk, Runnable onComplete) {
         PropertiesComponent instance = PropertiesComponent.getInstance();
+        isCanceled = false;
 
+        String platform = instance.getValue(AppConstant.PLATFORM);
         String apiKey = instance.getValue(AppConstant.API_KEY);
         String prompt = instance.getValue(AppConstant.PROMPT);
         String model = instance.getValue(AppConstant.MODEL);
+
+        PlatformConfig platformConfig = new PlatformConfig();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("API Key not configured");
         }
 
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(AppConstant.API_URL);
+        model = Objects.equals(platform, AppConstant.SILICON_FLOW) ? platformConfig.siliconFlowModelMap(model) : model;
+
+        try {
+            HttpPost httpPost = new HttpPost(platformConfig.apiUrlMap(platform));
 
             // 设置请求头
             httpPost.setHeader("Content-Type", "application/json");
@@ -61,27 +68,7 @@ public class DeepSeekService {
             }
 
             // 获取历史记录
-            String chatHistoryJson = instance.getValue(AppConstant.CHAT_HISTORY);
-            String optionValue = instance.getValue(AppConstant.OPTION_VALUE);
-
-            if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
-                Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
-                List<ChatMessage> chatMessages = gson.fromJson(chatHistoryJson, listType);
-
-                int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
-
-                // 获取最近的一条交互记录
-                if (!chatMessages.isEmpty()) {
-                    int size = chatMessages.size();
-                    int limit = size - limitNumber * 2;
-
-                    List<ChatMessage> lastTwoMessages = limit > 0 ? chatMessages.subList(limit, size) : chatMessages;
-
-                    for (ChatMessage lastTwoMessage : lastTwoMessages) {
-                        messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
-                    }
-                }
-            }
+            this.setChatHistory(instance, messages);
 
             messages.add(Map.of("role", "user", "content", message));
             requestBody.put("messages", messages);
@@ -91,69 +78,98 @@ public class DeepSeekService {
             httpPost.setEntity(new StringEntity(jsonBody, StandardCharsets.UTF_8));
 
             // 发送请求并处理流式响应
-            try (CloseableHttpResponse response = client.execute(httpPost)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                if (statusCode != 200) {
-                    // 处理非 200 响应
-                    throw new IOException("API request failed with status code: " + statusCode);
-                }
+            this.sendRequest(onChunk, httpPost);
+        } catch (Exception e) {
+            logger.error("Error creating HTTP client: " + e.getMessage());
+        } finally {
+            onComplete.run();
+        }
+    }
 
-                HttpEntity entity = response.getEntity();
+    private void sendRequest(Consumer<String> onChunk, HttpPost httpPost) {
+        try (CloseableHttpResponse response = client.execute(httpPost)) {
+            int statusCode = response.getStatusLine().getStatusCode();
 
-                if (entity == null) {
-                    throw new IOException("Empty response from API");
-                }
+            if (statusCode != 200) {
+                throw new IOException("API request failed with status code: " + statusCode);
+            }
 
-                try (BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
-                    String line;
+            HttpEntity entity = response.getEntity();
 
-                    while ((line = reader.readLine()) != null) {
-                        if (line.isEmpty()) {
-                            continue;
+            if (entity == null) {
+                throw new IOException("Empty response from API");
+            }
+
+            try (BufferedReader reader =
+                new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+
+                    if (line.startsWith("data: ")) {
+                        String jsonData = line.substring(6);
+
+                        if (Objects.equals("[DONE]", jsonData) || isCanceled) {
+                            break;
                         }
 
-                        if (line.startsWith("data: ")) {
-                            String jsonData = line.substring(6);
+                        try {
+                            MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
+                            MessageBO.Choices choices = Optional
+                                .ofNullable(messageBO.getChoices())
+                                .map(choicesList -> choicesList.get(0))
+                                .orElse(null);
 
-                            if ("[DONE]".equals(jsonData)) {
-                                break;
-                            }
+                            MessageBO.Delta delta =
+                                Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
 
-                            try {
-                                MessageBO messageBO = gson.fromJson(jsonData, MessageBO.class);
-                                MessageBO.Choices choices = Optional
-                                    .ofNullable(messageBO.getChoices())
-                                    .map(choicesList -> choicesList.get(0))
-                                    .orElse(null);
+                            if (Objects.nonNull(delta)) {
+                                String content =
+                                    Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
 
-                                MessageBO.Delta delta =
-                                    Optional.ofNullable(choices).map(MessageBO.Choices::getDelta).orElse(null);
-
-                                if (Objects.nonNull(delta)) {
-                                    String content =
-                                        Optional.ofNullable(delta.getReasoningContent()).orElseGet(delta::getContent);
-
-                                    if (Objects.nonNull(content)) {
-                                        onChunk.accept(content);
-                                    }
+                                if (Objects.nonNull(content)) {
+                                    onChunk.accept(content);
                                 }
-                            } catch (Exception e) {
-                                logger.error(e.getMessage());
                             }
+                        } catch (Exception e) {
+                            logger.error(e.getMessage());
                         }
                     }
                 }
-            } catch (Exception e) {
-                logger.error("Error during API request: " + e.getMessage());
-                throw e;
             }
         } catch (Exception e) {
-            logger.error("Error creating HTTP client: " + e.getMessage());
-
-            throw e;
+            logger.error("Error during API request: " + e.getMessage());
         }
+    }
 
-        onComplete.run();
+    private void setChatHistory(PropertiesComponent instance, List<Map<String, String>> messages) {
+        String chatHistoryJson = instance.getValue(AppConstant.CHAT_HISTORY);
+        String optionValue = instance.getValue(AppConstant.OPTION_VALUE);
+
+        if (chatHistoryJson != null && !chatHistoryJson.isEmpty()) {
+            Type listType = new TypeToken<List<ChatMessage>>() {}.getType();
+            List<ChatMessage> chatMessages = gson.fromJson(chatHistoryJson, listType);
+
+            int limitNumber = Objects.nonNull(optionValue) ? Integer.parseInt(optionValue) : 0;
+
+            // 获取最近的一条交互记录
+            if (!chatMessages.isEmpty()) {
+                int size = chatMessages.size();
+                int limit = size - limitNumber * 2;
+
+                List<ChatMessage> lastTwoMessages = limit > 0 ? chatMessages.subList(limit, size) : chatMessages;
+
+                for (ChatMessage lastTwoMessage : lastTwoMessages) {
+                    messages.add(Map.of("role", lastTwoMessage.getRole(), "content", lastTwoMessage.getContent()));
+                }
+            }
+        }
+    }
+
+    public void cancelRequest() {
+        isCanceled = true;
     }
 }

@@ -5,7 +5,7 @@ import java.awt.event.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.Objects;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
@@ -15,6 +15,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectManagerListener;
@@ -33,28 +34,26 @@ import com.sohocn.deep.seek.coder.util.LayoutUtil;
 import com.sohocn.deep.seek.coder.util.MarkdownUtil;
 
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
+import lombok.Getter;
 
 public class DeepSeekToolWindow {
     private static final int MESSAGE_HORIZONTAL_MARGIN = 20; // 左右边距各20像素
     private static final Gson gson = new GsonBuilder().create();
-    private final JPanel content;
-    private final JBPanel<JBPanel<?>> chatPanel;
+    @Getter
+    private final JPanel content = new JPanel(new BorderLayout());
+    private final JBPanel<JBPanel<?>> chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
     private final JBTextArea inputArea = new JBTextArea();
-    private final DeepSeekService deepSeekService;
+    private final JButton sendButton = new JButton();
+    private final DeepSeekService deepSeekService = new DeepSeekService();
     private final PropertiesComponent instance = PropertiesComponent.getInstance();
+    private static final Logger logger = Logger.getInstance(DeepSeekToolWindow.class);
 
     public DeepSeekToolWindow(Project project) {
-        this.deepSeekService = new DeepSeekService();
-
-        content = new JPanel(new BorderLayout());
-        content.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
-
-        // 聊天区域
-        chatPanel = new JBPanel<>(new VerticalFlowLayout(VerticalFlowLayout.TOP, 0, 0));
-        chatPanel.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
+        content.setBackground(LayoutUtil.backgroundColor());
+        chatPanel.setBackground(LayoutUtil.backgroundColor());
 
         JBScrollPane chatScrollPane = new JBScrollPane(chatPanel);
-        chatScrollPane.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
+        chatScrollPane.setBackground(LayoutUtil.backgroundColor());
         chatScrollPane.setBorder(JBUI.Borders.empty());
         chatScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
@@ -63,10 +62,10 @@ public class DeepSeekToolWindow {
 
         // 顶部工具栏
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(LayoutUtil.backgroundColor()); // 使用统一背景色
+        topPanel.setBackground(LayoutUtil.backgroundColor());
         topPanel.setBorder(JBUI.Borders.empty(5, 10));
 
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0)); // 增加图标间距
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         rightPanel.setOpaque(false);
 
         topPanel.add(rightPanel, BorderLayout.EAST);
@@ -82,9 +81,7 @@ public class DeepSeekToolWindow {
             }
         });
 
-        // 修改输入框的提示文本
-        inputArea.putClientProperty("StatusVisibleFunction", (Supplier<Boolean>)() -> true);
-        restConfigItem(); // 这个方法会设置适当的提示文本
+        restConfigItem();
 
         content.add(topPanel, BorderLayout.NORTH);
         content.add(chatScrollPane, BorderLayout.CENTER);
@@ -116,7 +113,7 @@ public class DeepSeekToolWindow {
         project.getMessageBus().connect().subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
             @Override
             public void toolWindowShown(@NotNull ToolWindow toolWindow) {
-                if ("DeepSeek".equals(toolWindow.getId())) {
+                if (Objects.equals(AppConstant.PLUGIN_NAME, toolWindow.getId())) {
                     loadChatHistory();
                 }
             }
@@ -132,11 +129,9 @@ public class DeepSeekToolWindow {
     }
 
     private void sendMessage() {
-        // 获取输入内容并进行前后空格过滤
-        String message = inputArea.getText().replaceAll("^\\s+|\\s+$", "");
+        String message = inputArea.getText().trim();
 
         if (!message.isEmpty()) {
-            // 禁用输入框
             inputArea.setEnabled(false);
             inputArea.setText("");
 
@@ -144,7 +139,7 @@ public class DeepSeekToolWindow {
             SwingUtilities.invokeLater(() -> {
                 // 显示用户消息
                 JBPanel<JBPanel<?>> userBubble = createMessageBubble(message, true);
-                userBubble.putClientProperty("originalMessage", message);
+                userBubble.putClientProperty("rawData", message);
                 chatPanel.add(userBubble);
 
                 // 创建 AI 回复的气泡
@@ -160,12 +155,13 @@ public class DeepSeekToolWindow {
                 ApplicationManager.getApplication().executeOnPooledThread(() -> {
                     try {
                         StringBuilder fullResponse = new StringBuilder();
+                        sendButton.setText(AppConstant.STOP_BUTTON);
 
                         this.deepSeekService.streamMessage(message, chunk -> SwingUtilities.invokeLater(() -> {
                             fullResponse.append(chunk);
                             String currentResponse = fullResponse.toString();
 
-                            aiBubble.putClientProperty("originalMessage", currentResponse);
+                            aiBubble.putClientProperty("rawData", currentResponse);
 
                             // 更新消息内容
                             JEditorPane textArea = (JEditorPane)aiBubble.getClientProperty("textArea");
@@ -175,23 +171,26 @@ public class DeepSeekToolWindow {
                             int maxWidth = chatPanel.getWidth() - (MESSAGE_HORIZONTAL_MARGIN * 2);
                             adjustMessageSize(aiBubble, maxWidth);
 
-                            // 重新布局
-                            aiBubble.revalidate();
-                            chatPanel.revalidate();
                         }),
                             // 忽略 token 信息
                             () -> SwingUtilities.invokeLater(() -> {
-                                inputArea.setEnabled(true);
-                                inputArea.requestFocus();
-                                scrollToBottom();
+
                             }));
                     } catch (Exception e) {
                         SwingUtilities.invokeLater(() -> {
-                            chatPanel.remove(aiBubble);
                             addMessageBubble("Error: " + e.getMessage());
-                            inputArea.setEnabled(true);
-                            inputArea.requestFocus();
+
+                            chatPanel.remove(aiBubble);
                         });
+                    } finally {
+                        inputArea.setEnabled(true);
+                        inputArea.requestFocus();
+
+                        aiBubble.revalidate();
+                        chatPanel.revalidate();
+                        sendButton.setText(AppConstant.SEND_BUTTON);
+
+                        scrollToBottom();
                     }
                 });
             });
@@ -213,6 +212,7 @@ public class DeepSeekToolWindow {
 
         chatPanel.revalidate();
         chatPanel.repaint();
+
         smoothScrollToBottom();
     }
 
@@ -265,7 +265,7 @@ public class DeepSeekToolWindow {
         textArea.setText(MarkdownUtil.render(message));
 
         // 存储原始消息和文本区域
-        bubble.putClientProperty("originalMessage", message);
+        bubble.putClientProperty("rawData", message);
         bubble.putClientProperty("textArea", textArea);
         bubble.putClientProperty("textPanel", messagePanel);
 
@@ -301,7 +301,7 @@ public class DeepSeekToolWindow {
 
         boolean hasKey = apiKey != null && !apiKey.trim().isEmpty();
 
-        inputArea.setText(hasKey ? "" : AppConstant.NO_API_KEY_PROMPT);
+        inputArea.setText(hasKey ? "" : AppConstant.API_KEY_TIPS);
         inputArea.setEnabled(hasKey);
     }
 
@@ -331,9 +331,8 @@ public class DeepSeekToolWindow {
 
             for (int i = 0; i < components.length; i++) {
                 if (components[i] instanceof JBPanel<?> bubble) {
-                    String message = (String)bubble.getClientProperty("originalMessage");
+                    String message = (String)bubble.getClientProperty("rawData");
 
-                    // 通过判断消息的位置来确定是否为用户消息
                     // 用户消息和 AI 回复总是成对出现，用户消息在偶数位置
                     boolean isUser = (i % 2 == 0);
 
@@ -354,7 +353,7 @@ public class DeepSeekToolWindow {
                 instance.setValue(AppConstant.CHAT_HISTORY, json);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("保存聊天记录 错误原因:{}", e.getMessage());
         }
     }
 
@@ -373,7 +372,7 @@ public class DeepSeekToolWindow {
                     for (ChatMessage message : messages) {
                         // 创建消息气泡，传入正确的 isUser 参数
                         JBPanel<JBPanel<?>> bubble = createMessageBubble(message.getContent(), message.isUser());
-                        bubble.putClientProperty("originalMessage", message.getContent());
+                        bubble.putClientProperty("rawData", message.getContent());
                         chatPanel.add(bubble);
                     }
 
@@ -393,31 +392,16 @@ public class DeepSeekToolWindow {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("加载聊天记录 错误原因:{}", e.getMessage());
         }
     }
 
-    // 创建工具栏按钮
-    private JLabel createToolbarButton(String icon, String tooltip) {
-        JLabel button = new JLabel(icon);
-        button.setToolTipText(tooltip);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setForeground(Gray._153);
-        button.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16)); // 调整图标大小
-
-        button.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                button.setForeground(JBColor.WHITE);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                button.setForeground(Gray._153);
-            }
-        });
-
-        return button;
+    public void clearChatHistory() {
+        chatPanel.removeAll();
+        chatPanel.revalidate();
+        chatPanel.repaint();
+        // 清除保存的历史记录
+        instance.unsetValue(AppConstant.CHAT_HISTORY);
     }
 
     // 现代风格的滚动条 UI
@@ -456,10 +440,6 @@ public class DeepSeekToolWindow {
             g2.fillRoundRect(thumbBounds.x + 2, thumbBounds.y + 2, thumbBounds.width - 4, thumbBounds.height - 4, 8, 8);
             g2.dispose();
         }
-    }
-
-    public JPanel getContent() {
-        return content;
     }
 
     // 修改输入区域的初始化代码
@@ -503,15 +483,29 @@ public class DeepSeekToolWindow {
         inputArea.setWrapStyleWord(true);
         inputArea.setRows(3);
         inputArea.setOpaque(false);
-        inputArea.setText(AppConstant.NO_API_KEY_PROMPT);
+        inputArea.setText(AppConstant.API_KEY_TIPS);
 
         // 创建包装面板并设置间距
         JPanel wrapperPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0)); // 设置组件间距为5
         wrapperPanel.setOpaque(false);
 
-        wrapperPanel.add(LayoutUtil.JLabel("Context"));
+        wrapperPanel.add(LayoutUtil.jLabel("Context"));
         wrapperPanel.add(LayoutUtil.contextSelect());
-        wrapperPanel.add(LayoutUtil.JLabel("Press Enter to submit"));
+
+        sendButton.setText(AppConstant.SEND_BUTTON);
+        sendButton.addActionListener(e -> {
+            if (Objects.equals(sendButton.getText(), AppConstant.SEND_BUTTON)) {
+                sendMessage();
+            } else {
+                sendButton.setText(AppConstant.SEND_BUTTON);
+
+                ApplicationManager.getApplication().executeOnPooledThread(this.deepSeekService::cancelRequest);
+
+                inputArea.setEnabled(true);
+                inputArea.requestFocus();
+            }
+        });
+        wrapperPanel.add(sendButton);
 
         // 创建底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
